@@ -4,6 +4,7 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const fs = require('fs');
 const { exec } = require('child_process');
+console.log('File started running');
 
 app.use(cors());
 app.use(bodyParser.json());
@@ -20,11 +21,12 @@ app.post('/compile', (req, res) => {
     if (error) {
       res.send({ success: false, error: stderr });
     } else {
-      res.send({ success: true, message: 'Compiled successfully!' });
+      exec('temp.exe', (runError, runStdout, runStderr) => {
+        res.send({ success: true, output: runStdout });
+      });
     }
   });
 });
-
 app.listen(5000, () => {
   console.log('Server running on port 5000');
 });
