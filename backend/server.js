@@ -22,6 +22,27 @@ function instrumentCode(code){
   }
        return output.join('\n');
 }
+function parseOutput(rawOutput) {
+  const lines = rawOutput.split('\n');
+  const steps = [];
+
+  for (let line of lines) {
+    if (line.startsWith('STEP|')) {
+      const data = line.replace('STEP|', '').trim();
+      const pairs = data.split(',');
+      const variables = {};
+
+      for (let pair of pairs) {
+        const [name, value] = pair.split('=');
+        variables[name] = value;
+      }
+
+      steps.push({ step: steps.length + 1, variables: variables });
+    }
+  }
+
+  return steps;
+}
 
 app.use(cors());
 app.use(bodyParser.json());
@@ -39,9 +60,10 @@ fs.writeFileSync('temp.cpp', instrumentedCode);
     if (error) {
       res.send({ success: false, error: stderr });
     } else {
-      exec('temp.exe', (runError, runStdout, runStderr) => {
-        res.send({ success: true, output: runStdout });
-      });
+     exec('temp.exe', (runError, runStdout, runStderr) => {
+  const steps = parseOutput(runStdout);
+  res.send({ success: true, steps: steps });
+});
     }
   });
 });
