@@ -3,6 +3,7 @@ import { useState } from 'react';
 
 function App() {
   const [code, setCode] = useState('');
+  const [ranCode, setRanCode] = useState('');
   const [steps, setSteps] = useState([]);
   const [error, setError] = useState('');
   const [current, setCurrent] = useState(0);
@@ -18,6 +19,7 @@ function App() {
     if (data.success) {
       setError('');
       setSteps(data.steps);
+      setRanCode(code);
       setCurrent(0);
     } else {
       setSteps([]);
@@ -32,7 +34,7 @@ function App() {
         value={code}
         onChange={(e) => setCode(e.target.value)}
         placeholder="Paste your C++ code here..."
-        rows={15}
+        rows={12}
         cols={60}
       />
       <br />
@@ -45,10 +47,26 @@ function App() {
           <button onClick={() => setCurrent(current - 1)} disabled={current === 0}>Back</button>
           <button onClick={() => setCurrent(current + 1)} disabled={current === steps.length - 1}>Next</button>
 
-          <div>
-            {Object.entries(steps[current].variables).map(([name, value]) => (
-              <div key={name}><strong>{name}</strong> = {value}</div>
-            ))}
+          <div className="panels">
+            <div className="panel">
+              <h3>Code</h3>
+              {ranCode.split('\n').map((text, i) => (
+                <div
+                  key={i}
+                  className={i + 1 === steps[current].line ? 'code-line active' : 'code-line'}
+                >
+                  <span className="line-no">{i + 1}</span>
+                  {text}
+                </div>
+              ))}
+            </div>
+
+            <div className="panel">
+              <h3>Variables</h3>
+              {Object.entries(steps[current].variables).map(([name, value]) => (
+                <div key={name}><strong>{name}</strong> = {value}</div>
+              ))}
+            </div>
           </div>
         </div>
       )}
