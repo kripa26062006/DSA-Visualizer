@@ -10,18 +10,25 @@ function instrumentCode(code) {
   const lines = code.split('\n');
   let trackedVars = [];
   let output = [];
+    function report(lineNo) {
+    const printParts = trackedVars.map(v => `"${v}=" << ${v}`).join(' << "," << ');
+    output.push(`cout << "STEP|" << ${lineNo} << "|" << ${printParts} << endl;`);
+  }
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     output.push(line);
 
-    const match = line.match(/^\s*(int|double|float|long long)\s+(\w+)\s*=/);
-    if (match) {
-      const varName = match[2];
-      trackedVars.push(varName);
+        const decl = line.match(/^\s*(int|double|float|long long)\s+(\w+)\s*=/);
+    const assign = line.match(/^\s*(\w+)\s*[+\-*\/%]?=(?!=)/);
 
-      const printParts = trackedVars.map(v => `"${v}=" << ${v}`).join(' << "," << ');
-      output.push(`cout << "STEP|" << ${i + 1} << "|" << ${printParts} << endl;`);
+    if (decl) {
+      trackedVars.push(decl[2]);
+      report(i + 1);
+    } else if (assign && trackedVars.includes(assign[1])) {
+      report(i + 1);
+    } else if (/^\s*cin\s*>>/.test(line) && trackedVars.length > 0) {
+      report(i + 1);
     }
   }
 
@@ -60,14 +67,20 @@ app.get('/', (req, res) => {
 
 app.post('/compile', (req, res) => {
   const code = req.body.code;
+  const input = req.body.input || '';
   const instrumentedCode = instrumentCode(code);
   fs.writeFileSync('temp.cpp', instrumentedCode);
+  fs.writeFileSync('input.txt', input);
 
   exec('g++ temp.cpp -o temp.exe', (error, stdout, stderr) => {
     if (error) {
       res.send({ success: false, error: stderr });
     } else {
-      exec('temp.exe', (runError, runStdout, runStderr) => {
+      exec('temp.exe < input.txt', { timeout: 5000 }, (runError, runStdout, runStderr) => {
+        if (runError && runError.killed) {
+  res.send({ success: false, error: 'Time limit exceeded (5 seconds). Check for an infinite loop.' });
+  return;
+}
         const steps = parseOutput(runStdout);
         res.send({ success: true, steps: steps });
       });

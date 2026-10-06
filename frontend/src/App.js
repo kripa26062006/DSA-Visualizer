@@ -1,18 +1,70 @@
 import './App.css';
 import { useState } from 'react';
 
+const examples = [
+  {
+    name: 'Add two numbers',
+    code: `#include <iostream>
+using namespace std;
+int main() {
+int x = 5;
+int y = 10;
+int sum = x + y;
+return 0;
+}`,
+    input: '',
+  },
+  {
+    name: 'Swap two numbers',
+    code: `#include <iostream>
+using namespace std;
+int main() {
+int a = 3;
+int b = 7;
+int temp = a;
+a = b;
+b = temp;
+return 0;
+}`,
+    input: '',
+  },
+  {
+    name: 'Add two numbers from input',
+    code: `#include <iostream>
+using namespace std;
+int main() {
+int a = 0;
+int b = 0;
+cin >> a;
+cin >> b;
+int sum = a + b;
+return 0;
+}`,
+    input: '4 9',
+  },
+];
+
 function App() {
   const [code, setCode] = useState('');
+  const [input, setInput] = useState('');
   const [ranCode, setRanCode] = useState('');
   const [steps, setSteps] = useState([]);
   const [error, setError] = useState('');
   const [current, setCurrent] = useState(0);
 
+  const loadExample = (e) => {
+    const chosen = examples[e.target.value];
+    if (chosen) {
+      setCode(chosen.code);
+      setInput(chosen.input);
+    }
+  };
+
   const handleRun = async () => {
     const response = await fetch('http://localhost:5000/compile', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code: code }),
+      body: JSON.stringify({ code: code, input: input }),
     });
 
     const data = await response.json();
@@ -30,11 +82,26 @@ function App() {
   return (
     <div className="App">
       <h1>DSA Code Visualizer</h1>
+      <select onChange={loadExample} defaultValue="">
+        <option value="" disabled>Load an example...</option>
+        {examples.map((ex, i) => (
+          <option key={i} value={i}>{ex.name}</option>
+        ))}
+      </select>
+      <br />
       <textarea
         value={code}
         onChange={(e) => setCode(e.target.value)}
         placeholder="Paste your C++ code here..."
         rows={12}
+        cols={60}
+      />
+      <br />
+      <textarea
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        placeholder="Input for cin (optional), e.g. 4 9"
+        rows={2}
         cols={60}
       />
       <br />
