@@ -42,6 +42,70 @@ return 0;
 }`,
     input: '4 9',
   },
+    {
+    name: 'Sum loop (for)',
+    code: `#include <iostream>
+using namespace std;
+int main() {
+int sum = 0;
+for (int i = 1; i <= 3; i++) {
+sum += i;
+}
+return 0;
+}`,
+    input: '',
+  },
+  {
+    name: 'Countdown (while)',
+    code: `#include <iostream>
+using namespace std;
+int main() {
+int n = 3;
+int total = 0;
+while (n > 0) {
+total += n;
+n--;
+}
+return 0;
+}`,
+    input: '',
+  },
+    {
+    name: 'Find the biggest (array)',
+    code: `#include <iostream>
+using namespace std;
+int main() {
+int arr[5] = {3, 8, 2, 9, 4};
+int big = arr[0];
+for (int i = 1; i < 5; i++) {
+if (arr[i] > big) {
+big = arr[i];
+}
+}
+return 0;
+}`,
+    input: '',
+  },
+  {
+    name: 'Bubble sort',
+    code: `#include <iostream>
+using namespace std;
+int main() {
+int arr[4] = {4, 2, 3, 1};
+int n = 4;
+for (int i = 0; i < n - 1; i++) {
+for (int j = 0; j < n - i - 1; j++) {
+if (arr[j] > arr[j + 1]) {
+int temp = arr[j];
+arr[j] = arr[j + 1];
+arr[j + 1] = temp;
+}
+}
+}
+return 0;
+}`,
+    input: '',
+  },
 ];
 
 function App() {
@@ -130,9 +194,28 @@ function App() {
 
             <div className="panel">
               <h3>Variables</h3>
-              {Object.entries(steps[current].variables).map(([name, value]) => (
-                <div key={name}><strong>{name}</strong> = {value}</div>
-              ))}
+              {Object.entries(steps[current].variables).map(([name, value]) => {
+  if (value.startsWith('[')) {
+    const cells = value.slice(1, -1).split(' ');
+    const before = current > 0 && steps[current - 1].variables[name]
+      ? steps[current - 1].variables[name].slice(1, -1).split(' ')
+      : [];
+    return (
+      <div key={name}>
+        <strong>{name}</strong>
+        <div className="array">
+          {cells.map((c, idx) => (
+            <div key={idx} className="cell-wrap">
+              <div className={before.length && before[idx] !== c ? 'cell changed' : 'cell'}>{c}</div>
+              <div className="idx">{idx}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  return <div key={name}><strong>{name}</strong> = {value}</div>;
+})}
             </div>
           </div>
         </div>

@@ -33,3 +33,27 @@
   width: 28px;
   color: #888;
 }
+.array {
+  display: flex;
+  gap: 4px;
+  margin: 6px 0 12px;
+}
+
+.cell {
+  width: 36px;
+  height: 36px;
+  border: 1px solid #888;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cell.changed {
+  background: #ffe9a8;
+}
+
+.idx {
+  font-size: 11px;
+  color: #888;
+  text-align: center;
+}
