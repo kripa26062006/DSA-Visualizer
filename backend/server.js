@@ -113,6 +113,75 @@ app.post('/compile', (req, res) => {
   });
 });
 
+function parseGdb(stdout, source) {
+  const steps = [];
+  let cur = null;
+
+  for (const raw of stdout.split('\n')) {
+    const line = raw.trim();
+    const lineMatch = raw.match(/^(\d+)\t/);
+    const varMatch = line.match(/^(\w+) = (.*)$/);
+
+    if (lineMatch) {
+      cur = { line: Number(lineMatch[1]), variables: {} };
+      steps.push(cur);
+    } else if (cur && varMatch) {
+      let value = varMatch[2];
+      if (/^\{[-\d.,\s]+\}$/.test(value)) {
+        value = '[' + value.slice(1, -1).replace(/,\s*/g, ' ') + ']';
+      }
+      cur.variables[varMatch[1]] = value;
+    }
+  }
+
+  function declLine(name) {
+    const re = new RegExp('\\b(int|double|float|long long)\\s+' + name + '\\b');
+    return source.findIndex(l => re.test(l)) + 1;
+  }
+
+  const visible = new Set();
+  for (const s of steps) {
+    for (const name of Object.keys(s.variables)) {
+      if (s.line > declLine(name)) visible.add(name);
+    }
+    for (const name of Object.keys(s.variables)) {
+      if (!visible.has(name)) delete s.variables[name];
+    }
+    for (const name of [...visible]) {
+      if (!(name in s.variables)) visible.delete(name);
+    }
+  }
+
+  return steps.map((s, i) => ({ step: i + 1, line: s.line, variables: s.variables }));
+}
+
+app.post('/trace', (req, res) => {
+  const code = req.body.code;
+  const input = req.body.input || '';
+  fs.writeFileSync('temp.cpp', code);
+  fs.writeFileSync('input.txt', input);
+
+  exec('g++ -g temp.cpp -o temp.exe', (error, stdout, stderr) => {
+    if (error) {
+      res.send({ success: false, error: stderr });
+      return;
+    }
+
+    let cmds = 'break main\nrun < input.txt\ninfo locals\n';
+    for (let i = 0; i < 200; i++) {
+      cmds += 'next\ninfo locals\n';
+    }
+    fs.writeFileSync('cmds.txt', cmds);
+
+    exec('gdb -batch -x cmds.txt temp.exe', { timeout: 15000 }, (gdbError, gdbOut) => {
+      if (gdbError && gdbError.killed) {
+        res.send({ success: false, error: 'Time limit exceeded. Check for an infinite loop.' });
+        return;
+      }
+      res.send({ success: true, steps: parseGdb(gdbOut, code.split('\n')) });
+    });
+  });
+});
 app.listen(5000, () => {
   console.log('Server running on port 5000');
 });

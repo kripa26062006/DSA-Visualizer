@@ -1,0 +1,403 @@
+break main
+run < input.txt
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
+next
+info locals
