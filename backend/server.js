@@ -112,7 +112,6 @@ app.post('/compile', (req, res) => {
     }
   });
 });
-
 function parseGdb(stdout, source) {
   const steps = [];
   let cur = null;
@@ -120,11 +119,14 @@ function parseGdb(stdout, source) {
   for (const raw of stdout.split('\n')) {
     const line = raw.trim();
     const lineMatch = raw.match(/^(\d+)\t/);
+    const frameMatch = line.match(/^#\d+\s+(?:0x[0-9a-f]+ in )?(\w+) \((.*?)\) at /);
     const varMatch = line.match(/^(\w+) = (.*)$/);
 
     if (lineMatch) {
-      cur = { line: Number(lineMatch[1]), variables: {} };
+      cur = { line: Number(lineMatch[1]), variables: {}, stack: [] };
       steps.push(cur);
+    } else if (cur && frameMatch) {
+      cur.stack.push(frameMatch[1] + '(' + frameMatch[2] + ')');
     } else if (cur && varMatch) {
       let value = varMatch[2];
       if (/^\{[-\d.,\s]+\}$/.test(value)) {
@@ -141,19 +143,26 @@ function parseGdb(stdout, source) {
 
   const visible = new Set();
   for (const s of steps) {
-    for (const name of Object.keys(s.variables)) {
-      if (s.line > declLine(name)) visible.add(name);
+    const d = s.stack.length;
+
+    for (const key of [...visible]) {
+      if (Number(key.split(':')[0]) > d) visible.delete(key);
     }
     for (const name of Object.keys(s.variables)) {
-      if (!visible.has(name)) delete s.variables[name];
+      if (s.line > declLine(name)) visible.add(d + ':' + name);
     }
-    for (const name of [...visible]) {
-      if (!(name in s.variables)) visible.delete(name);
+    for (const name of Object.keys(s.variables)) {
+      if (!visible.has(d + ':' + name)) delete s.variables[name];
+    }
+    for (const key of [...visible]) {
+      const parts = key.split(':');
+      if (Number(parts[0]) === d && !(parts[1] in s.variables)) visible.delete(key);
     }
   }
 
-  return steps.map((s, i) => ({ step: i + 1, line: s.line, variables: s.variables }));
+  return steps.map((s, i) => ({ step: i + 1, line: s.line, variables: s.variables, stack: s.stack }));
 }
+
 
 app.post('/trace', (req, res) => {
   const code = req.body.code;
@@ -166,10 +175,10 @@ app.post('/trace', (req, res) => {
       res.send({ success: false, error: stderr });
       return;
     }
-
-    let cmds = 'break main\nrun < input.txt\ninfo locals\n';
+    const show = 'bt\ninfo args\ninfo locals\n';
+    let cmds = 'break main\nrun < input.txt\n' + show;
     for (let i = 0; i < 200; i++) {
-      cmds += 'next\ninfo locals\n';
+      cmds += 'step\n' + show;
     }
     fs.writeFileSync('cmds.txt', cmds);
 

@@ -1,403 +1,805 @@
 break main
 run < input.txt
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
-info locals
-next
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
+info locals
+step
+bt
+info args
 info locals

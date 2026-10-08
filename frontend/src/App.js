@@ -106,6 +106,23 @@ return 0;
 }`,
     input: '',
   },
+   {
+    name: 'Factorial (recursion)',
+    code: `#include <iostream>
+using namespace std;
+int fact(int n) {
+if (n <= 1) {
+return 1;
+}
+int r = n * fact(n - 1);
+return r;
+}
+int main() {
+int result = fact(3);
+return 0;
+}`,
+    input: '',
+  },
 ];
 
 function App() {
@@ -217,6 +234,14 @@ function App() {
   return <div key={name}><strong>{name}</strong> = {value}</div>;
 })}
             </div>
+                        {steps[current].stack && steps[current].stack.length > 1 && (
+              <div className="panel">
+                <h3>Call stack</h3>
+                {steps[current].stack.map((f, i) => (
+                  <div key={i} className={i === 0 ? 'frame top' : 'frame'}>{f}</div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -5,6 +5,7 @@
 
 .panels {
   display: flex;
+  flex-wrap: wrap;
   gap: 16px;
   justify-content: center;
   margin-top: 16px;
@@ -33,6 +34,7 @@
   width: 28px;
   color: #888;
 }
+
 .array {
   display: flex;
   gap: 4px;
@@ -56,4 +58,16 @@
   font-size: 11px;
   color: #888;
   text-align: center;
+}
+
+.frame {
+  font-family: monospace;
+  border: 1px solid #888;
+  border-radius: 4px;
+  padding: 4px 8px;
+  margin-bottom: 4px;
+}
+
+.frame.top {
+  background: #ffe9a8;
 }
