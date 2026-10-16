@@ -123,6 +123,27 @@ return 0;
 }`,
     input: '',
   },
+    {
+    name: 'Linked list walk',
+    code: `#include <iostream>
+using namespace std;
+struct ListNode {
+int val;
+ListNode* next;
+ListNode(int x) { val = x; next = NULL; }
+};
+int main() {
+ListNode* head = new ListNode(1);
+head->next = new ListNode(2);
+head->next->next = new ListNode(3);
+ListNode* cur = head;
+while (cur != NULL) {
+cur = cur->next;
+}
+return 0;
+}`,
+    input: '',
+  },
 ];
 
 function App() {
@@ -142,12 +163,11 @@ function App() {
   };
 
   const handleRun = async () => {
-    const response = await fetch('http://localhost:5000/trace', {
+    const response = await fetch('http://localhost:5000/tracelist', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code: code, input: input }),
     });
-
     const data = await response.json();
     if (data.success) {
       setError('');
@@ -207,6 +227,7 @@ function App() {
                   {text}
                 </div>
               ))}
+              
             </div>
 
             <div className="panel">
@@ -239,6 +260,24 @@ function App() {
                 <h3>Call stack</h3>
                 {steps[current].stack.map((f, i) => (
                   <div key={i} className={i === 0 ? 'frame top' : 'frame'}>{f}</div>
+                ))}
+              </div>
+            )}
+                        {steps[current].chains && Object.keys(steps[current].chains).length > 0 && (
+              <div className="panel">
+                <h3>Linked lists</h3>
+                {Object.entries(steps[current].chains).map(([name, nodes]) => (
+                  <div key={name} className="chain">
+                   <strong>{name}</strong>
+                    {nodes.map((v, i) => (
+                      <span key={i} className="chain-item">
+                        <span className="arrow">→</span>
+                        <span className="node">{v}</span>
+                      </span>
+                    ))}
+                    <span className="arrow">→</span>
+                    <span className="null">NULL</span>
+                  </div>
                 ))}
               </div>
             )}

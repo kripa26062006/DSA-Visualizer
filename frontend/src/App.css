@@ -71,3 +71,30 @@
 .frame.top {
   background: #ffe9a8;
 }
+.chain {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.chain-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.node {
+  border: 1px solid #888;
+  border-radius: 6px;
+  padding: 6px 12px;
+}
+
+.arrow {
+  color: #888;
+}
+
+.null {
+  color: #888;
+  font-family: monospace;
+}

@@ -1,13 +1,21 @@
 #include <iostream>
 using namespace std;
-int power(int base, int exp) {
-if (exp == 0) {
-return 1;
-}
-int rest = power(base, exp - 1);
-return base * rest;
-}
+struct ListNode {
+int val;
+ListNode* next;
+ListNode(int x) { val = x; next = NULL; }
+};
 int main() {
-int answer = power(2, 3);
+ListNode* head = new ListNode(1);
+head->next = new ListNode(2);
+head->next->next = new ListNode(3);
+ListNode* prev = NULL;
+ListNode* cur = head;
+while (cur != NULL) {
+ListNode* nxt = cur->next;
+cur->next = prev;
+prev = cur;
+cur = nxt;
+}
 return 0;
 }
