@@ -144,6 +144,45 @@ return 0;
 }`,
     input: '',
   },
+    {
+    name: 'Merge sort (linked list)',
+    code: `class Solution {
+public:
+    ListNode* merge(ListNode* h1, ListNode* h2) {
+        ListNode* h = new ListNode(0);
+        ListNode* t = h;
+        while (h1 != NULL && h2 != NULL) {
+            if (h1->val < h2->val) {
+                t->next = h1;
+                h1 = h1->next;
+            } else {
+                t->next = h2;
+                h2 = h2->next;
+            }
+            t = t->next;
+        }
+        if (h1 != NULL) t->next = h1;
+        else t->next = h2;
+        return h->next;
+    }
+
+    ListNode* sortList(ListNode* head) {
+        if (head == NULL || head->next == NULL) return head;
+        ListNode* s = head;
+        ListNode* f = head->next;
+        while (f != NULL && f->next != NULL) {
+            s = s->next;
+            f = f->next->next;
+        }
+        ListNode* second = s->next;
+        s->next = NULL;
+        ListNode* left = sortList(head);
+        ListNode* right = sortList(second);
+        return merge(left, right);
+    }
+};`,
+    input: '4 2 1 3',
+  },
 ];
 
 function App() {
@@ -153,6 +192,7 @@ function App() {
   const [steps, setSteps] = useState([]);
   const [error, setError] = useState('');
   const [current, setCurrent] = useState(0);
+    const [loading, setLoading] = useState(false);
 
   const loadExample = (e) => {
     const chosen = examples[e.target.value];
@@ -162,24 +202,29 @@ function App() {
     }
   };
 
-  const handleRun = async () => {
-    const response = await fetch('http://localhost:5000/tracelist', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code: code, input: input }),
-    });
-    const data = await response.json();
-    if (data.success) {
-      setError('');
-      setSteps(data.steps);
-      setRanCode(code);
-      setCurrent(0);
-    } else {
-      setSteps([]);
-      setError(data.error);
+   const handleRun = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch('http://localhost:5000/tracelist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: code, input: input }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setError('');
+        setSteps(data.steps);
+        setRanCode(code);
+        setCurrent(0);
+      } else {
+        setSteps([]);
+        setError(data.error);
+      }
+    } catch (e) {
+      setError('Could not reach the server. Is the backend running?');
     }
+    setLoading(false);
   };
-
   return (
     <div className="App">
       <h1>DSA Code Visualizer</h1>
@@ -206,15 +251,39 @@ function App() {
         cols={60}
       />
       <br />
-      <button onClick={handleRun}>Run</button>
+            <button onClick={handleRun} disabled={loading}>{loading ? 'Running...' : 'Run'}</button>
       {error && <pre style={{ color: 'red' }}>{error}</pre>}
 
       {steps.length > 0 && (
         <div>
-          <p>Step {current + 1} of {steps.length}</p>
+          <p>
+            Step{' '}
+            <input
+              type="number"
+              min="1"
+              max={steps.length}
+              value={current + 1}
+              onChange={(e) => {
+                const n = Number(e.target.value);
+                if (n >= 1 && n <= steps.length) setCurrent(n - 1);
+              }}
+              style={{ width: '60px' }}
+            />{' '}
+            of {steps.length}
+          </p>
+          <input
+            type="range"
+            min="0"
+            max={steps.length - 1}
+            value={current}
+            onChange={(e) => setCurrent(Number(e.target.value))}
+            style={{ width: '60%' }}
+          />
+          <br />
+          <button onClick={() => setCurrent(0)} disabled={current === 0}>First</button>
           <button onClick={() => setCurrent(current - 1)} disabled={current === 0}>Back</button>
           <button onClick={() => setCurrent(current + 1)} disabled={current === steps.length - 1}>Next</button>
-
+          <button onClick={() => setCurrent(steps.length - 1)} disabled={current === steps.length - 1}>Last</button>
           <div className="panels">
             <div className="panel">
               <h3>Code</h3>

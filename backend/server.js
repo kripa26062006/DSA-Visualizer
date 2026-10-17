@@ -5,13 +5,14 @@ const bodyParser = require('body-parser');
 const fs = require('fs');
 console.log('File started running');
 const { exec, spawn } = require('child_process');
+
 function instrumentCode(code) {
   const lines = code.split('\n');
   let trackedVars = [];
   let output = [];
   let depth = 0;
 
-   function report(lineNo) {
+  function report(lineNo) {
     const parts = trackedVars.map(v => {
       if (v.isArray) {
         const len = `(int)(sizeof(${v.name}) / sizeof(${v.name}[0]))`;
@@ -32,14 +33,13 @@ function instrumentCode(code) {
     const assign = line.match(/^\s*(\w+)(\[[^\]]*\])?\s*([+\-*\/%]?=(?!=)|\+\+|--)/);
     const arrayDecl = line.match(/^\s*(int|double|float|long long)\s+(\w+)\s*\[[^\]]*\]\s*=/);
     const names = trackedVars.map(v => v.name);
- 
 
     if (forDecl) {
       trackedVars.push({ name: forDecl[2], depth: depth + 1 });
       report(i + 1);
     } else if (whileLoop && trackedVars.length > 0) {
       report(i + 1);
-     } else if (arrayDecl) {
+    } else if (arrayDecl) {
       trackedVars.push({ name: arrayDecl[2], depth: depth, isArray: true });
       report(i + 1);
     } else if (decl) {
@@ -59,6 +59,7 @@ function instrumentCode(code) {
 
   return output.join('\n');
 }
+
 function parseOutput(rawOutput) {
   const lines = rawOutput.split('\n');
   const steps = [];
@@ -111,12 +112,13 @@ app.post('/compile', (req, res) => {
     }
   });
 });
+
 function parseGdb(stdout, source) {
   const steps = [];
   let cur = null;
 
   for (const raw of stdout.split('\n')) {
-        if (raw.startsWith('@@CHAINS@@')) {
+    if (raw.startsWith('@@CHAINS@@')) {
       if (cur) cur.chains = JSON.parse(raw.slice(10));
       continue;
     }
@@ -126,13 +128,13 @@ function parseGdb(stdout, source) {
     const varMatch = line.match(/^(\w+) = (.*)$/);
 
     if (lineMatch) {
-          cur = { line: Number(lineMatch[1]), variables: {}, stack: [], chains: {} };
+      cur = { line: Number(lineMatch[1]), variables: {}, stack: [], chains: {} };
       steps.push(cur);
     } else if (cur && frameMatch) {
       cur.stack.push(frameMatch[1] + '(' + frameMatch[2] + ')');
-        } else if (cur && varMatch && varMatch[1] !== 'this') {
+    } else if (cur && varMatch && varMatch[1] !== 'this') {
       let value = varMatch[2];
-            if (value === '0x0') value = 'NULL';
+      if (value === '0x0') value = 'NULL';
       if (/^\{[-\d.,\s]+\}$/.test(value)) {
         value = '[' + value.slice(1, -1).replace(/,\s*/g, ' ') + ']';
       }
@@ -146,7 +148,7 @@ function parseGdb(stdout, source) {
   }
 
   const visible = new Set();
-    let prev = null;
+  let prev = null;
   for (const s of steps) {
     const d = s.stack.length;
 
@@ -161,12 +163,12 @@ function parseGdb(stdout, source) {
     }
     for (const key of [...visible]) {
       const parts = key.split(':');
-      if (Number(parts[0]) === d && !(parts[1] in s.variables)) visible.delete(key); 
+      if (Number(parts[0]) === d && !(parts[1] in s.variables)) visible.delete(key);
     }
-        for (const name of Object.keys(s.chains)) {
+    for (const name of Object.keys(s.chains)) {
       if (!(name in s.variables)) delete s.chains[name];
     }
-        if (prev) {
+    if (prev) {
       for (const name of Object.keys(prev.chains)) {
         if (name in s.variables && !(name in s.chains) && s.variables[name] !== 'NULL') {
           s.chains[name] = prev.chains[name];
@@ -176,14 +178,18 @@ function parseGdb(stdout, source) {
     prev = s;
   }
 
-    const shown = steps.filter(s => !(s.stack.length > 0 && /::/.test(s.stack[0])));
+  const shown = steps.filter(s =>
+    s.line <= source.length && !(s.stack.length > 0 && /^(\w+)::~?\1\(/.test(s.stack[0]))
+  );
   return shown.map((s, i) => ({ step: i + 1, line: s.line, variables: s.variables, stack: s.stack, chains: s.chains }));
 }
+
 function startGdb(exe) {
   const gdb = spawn('gdb', ['-q', exe]);
   let buffer = '';
   let waiting = null;
   let closed = false;
+
   function onData(chunk) {
     buffer += chunk.toString();
     if (waiting && buffer.includes('@@END@@')) {
@@ -198,7 +204,7 @@ function startGdb(exe) {
   gdb.stdout.on('data', onData);
   gdb.stderr.on('data', onData);
   gdb.stdin.on('error', () => {});
-    gdb.on('close', () => {
+  gdb.on('close', () => {
     closed = true;
     if (waiting) {
       const done = waiting;
@@ -206,7 +212,8 @@ function startGdb(exe) {
       done('@@CLOSED@@');
     }
   });
- function ask(cmd) {
+
+  function ask(cmd) {
     return new Promise((resolve) => {
       if (closed) {
         resolve('@@CLOSED@@');
@@ -217,8 +224,10 @@ function startGdb(exe) {
       gdb.stdin.write('echo @@END@@\\n\n');
     });
   }
-    return { ask, kill: () => gdb.kill() };
+
+  return { ask, kill: () => gdb.kill() };
 }
+
 async function followChain(ask, name, typeName) {
   const nodes = [];
   let ptr = name;
@@ -260,14 +269,43 @@ app.post('/trace', (req, res) => {
     });
   });
 });
-app.post('/tracelist', (req, res) => {
-  const code = req.body.code;
-  const input = req.body.input || '';
-  fs.writeFileSync('temp.cpp', code);
-  fs.writeFileSync('input.txt', input);
 
-  const typeMatch = code.match(/struct\s+(\w+)\s*\{/);
-  const typeName = typeMatch ? typeMatch[1] : null;
+app.post('/tracelist', (req, res) => {
+  const userCode = req.body.code;
+  const input = req.body.input || '';
+  const bare = userCode.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+
+  let src = userCode;
+  let startAt = 'main';
+  let typeName = null;
+  const isLeet = /class\s+Solution/.test(bare) && !/\bmain\s*\(/.test(bare);
+
+  if (isLeet) {
+    const fn = bare.match(/ListNode\s*\*\s*(\w+)\s*\(\s*ListNode\s*\*\s*\w+\s*\)/);
+    if (!fn) {
+      res.send({ success: false, error: 'Could not find a function that takes a ListNode* and returns a ListNode*.' });
+      return;
+    }
+    const hasNode = /struct\s+ListNode/.test(bare);
+    const header = '#include <iostream>\n#include <vector>\nusing namespace std;\n' +
+      (hasNode ? '' : 'struct ListNode { int val; ListNode* next; ListNode(int x) : val(x), next(NULL) {} };\n') +
+      '#line 1\n';
+    const wrapper = '\n#line 100000\nint main() {\n' +
+      'ListNode* head = NULL; ListNode* tail = NULL; int x;\n' +
+      'while (cin >> x) { ListNode* n = new ListNode(x); if (head == NULL) head = n; else tail->next = n; tail = n; }\n' +
+      'Solution s;\n' +
+      'ListNode* result = s.' + fn[1] + '(head);\n' +
+      'return 0;\n}\n';
+    src = header + userCode + wrapper;
+    startAt = 'Solution::' + fn[1];
+    typeName = 'ListNode';
+  } else {
+    const typeMatch = userCode.match(/struct\s+(\w+)\s*\{/);
+    typeName = typeMatch ? typeMatch[1] : null;
+  }
+
+  fs.writeFileSync('temp.cpp', src);
+  fs.writeFileSync('input.txt', input);
 
   exec('g++ -g -static temp.cpp -o temp.exe', async (error, stdout, stderr) => {
     if (error) {
@@ -276,14 +314,14 @@ app.post('/tracelist', (req, res) => {
     }
 
     const g = startGdb('temp.exe');
-    const timer = setTimeout(() => g.kill(), 20000);
+    const timer = setTimeout(() => g.kill(), 60000);
     let all = '';
 
     await g.ask('set pagination off');
-    await g.ask('break main');
+    await g.ask('break ' + startAt);
     all += await g.ask('run < input.txt');
 
-    for (let i = 0; i < 200; i++) {
+    for (let i = 0; i < 300; i++) {
       if (i > 0) {
         const stepOut = await g.ask('step');
         all += stepOut;
@@ -291,6 +329,7 @@ app.post('/tracelist', (req, res) => {
       }
 
       const bt = await g.ask('bt');
+     if (isLeet && !bt.includes(startAt)) break;
       const args = await g.ask('info args');
       const locals = await g.ask('info locals');
       all += bt + args + locals;
@@ -302,15 +341,16 @@ app.post('/tracelist', (req, res) => {
           const nodes = await followChain(g.ask, m[1], typeName);
           if (nodes.length) chains[m[1]] = nodes;
         }
-                all += '\n@@CHAINS@@' + JSON.stringify(chains) + '\n';
+        all += '\n@@CHAINS@@' + JSON.stringify(chains) + '\n';
       }
     }
 
     clearTimeout(timer);
     g.kill();
-    res.send({ success: true, steps: parseGdb(all, code.split('\n')) });
+    res.send({ success: true, steps: parseGdb(all, userCode.split('\n')) });
   });
 });
+
 app.listen(5000, () => {
   console.log('Server running on port 5000');
 });
