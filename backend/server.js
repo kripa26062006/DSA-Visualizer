@@ -261,7 +261,7 @@ function parseGdb(stdout, source) {
   }
 
      function declLine(name) {
-    const re = new RegExp('(\\b(int|double|float|long long|long|ll|int64_t|uint64_t|size_t|unsigned|char|bool|string)|(?:vector|unordered_map|unordered_set|map|set|multiset|multimap)<[^;()]*>|\\w+\\s*\\*+)\\s*&?\\s*' + name + '\\b');
+    const re = new RegExp('(\\b(int|double|float|long long|long|ll|int64_t|uint64_t|size_t|unsigned|char|bool|string)|(?:vector|unordered_map|unordered_set|map|set|multiset|multimap|stack|queue|deque|priority_queue|list|pair)<[^;()]*>|\\w+\\s*\\*+)\\s*&?\\s*' + name + '\\b');
     return source.findIndex(l => re.test(l)) + 1;
   }
 
@@ -481,8 +481,10 @@ function splitTopQ(s) {
   let d = 0;
   let q = false;
   for (let i = 0; i < s.length; i++) {
-    const ch = s[i];
-    if (ch === '"' && s[i - 1] !== '\\') q = !q;
+      const ch = s[i];
+    if (!q && ch === "'") { const e = s.indexOf("'", i + (s[i + 1] === '\\' ? 3 : 2)); if (e > 0) { cur += s.slice(i, e + 1); i = e; continue; } }
+    if (ch === '"' && s[i - 1] !== '\\') q = !q;   
+    
     if (!q) {
       if (ch === '{') d++;
       if (ch === '}') d--;
@@ -506,6 +508,17 @@ function prettyItems(body, isMap) {
     const val = isMap ? e[2] : e[1];
     if (/^\{/.test(val) || /^std::/.test(val)) return null;
     out.push(isMap ? fix(e[1]) + ': ' + fix(e[2]) : fix(val));
+  }
+  return out;
+}
+function prettyList(body) {
+  const inner = body.slice(1, -1).trim();
+  if (!inner) return [];
+  const out = [];
+  for (const part of splitTopQ(inner)) {
+    const p = part.trim().replace(/^(-?\d+) ('.*')$/, '$2');
+    if (/^\{/.test(p) || /^std::/.test(p)) return null;
+    out.push(p);
   }
   return out;
 }
@@ -598,7 +611,7 @@ app.post('/tracelist', (req, res) => {
           guard++;
         }
         if (/@@CLOSED@@|exited|not being run/.test(stepOut)) break;
-        if (skipped) continue;
+              if (skipped && /^0x[0-9a-f]+ in /m.test(stepOut)) continue;
         all += stepOut;
       }
 
@@ -698,6 +711,51 @@ app.post('/tracelist', (req, res) => {
           if (bm) b = '/' + bm[1];
         }
         vecs[m[1]] = tag + b + '{' + items.join(', ') + '}';
+      }
+            // std::stack<T>  ->  stk{bottom, ..., top}  (read straight out of the deque's memory)
+      for (const m of (args + locals).matchAll(/^(\w+) = (?:@0x[0-9a-f]+: )?(?:\{c = \{<std::_Deque_base)/gm)) {
+        const nm = m[1];
+        let kind = typeCache['stk:' + nm];
+        if (kind === undefined) {
+          const wt = await g.ask('whatis ' + nm);
+          const tm = wt.match(/type = (?:const )?std::stack<([^,<>]+?)\s*(?:,|>)/);
+          kind = tm ? kindOf(tm[1]) : null;
+          if (kind === 'str') kind = null;
+          typeCache['stk:' + nm] = kind;
+        }
+        if (!kind) continue;
+        const D = nm + '.c._M_impl';
+        const head = await g.ask([
+          'print (long)(' + D + '._M_finish._M_node - ' + D + '._M_start._M_node) * (long)(' + D + '._M_start._M_last - ' + D + '._M_start._M_first) + (long)(' + D + '._M_finish._M_cur - ' + D + '._M_finish._M_first) - (long)(' + D + '._M_start._M_cur - ' + D + '._M_start._M_first)',
+          'print (long)(' + D + '._M_start._M_last - ' + D + '._M_start._M_first)',
+          'print (long)(' + D + '._M_start._M_cur - ' + D + '._M_start._M_first)',
+        ].join('\n'));
+        const hv = [...head.matchAll(/^\$\d+ = (-?\d+)\s*$/gm)].map((x) => Number(x[1]));
+        if (hv.length !== 3) continue;
+        const [cnt, per, first] = hv;
+        if (cnt < 0 || per <= 0) continue;
+        if (cnt === 0) { vecs[nm] = 'stk{}'; continue; }
+        if (cnt > 40) { vecs[nm] = 'stack (' + cnt + ' items)'; continue; }
+        const cmds = [];
+        for (let k = 0; k < cnt; k++) {
+          const gi = first + k;
+          cmds.push('print ' + D + '._M_start._M_node[' + Math.floor(gi / per) + '][' + (gi % per) + ']');
+        }
+        const out = await g.ask(cmds.join('\n'));
+        const vals = [...out.matchAll(/^\$\d+ = (.*)$/gm)].map((x) => {
+          const t = x[1].trim();
+          const c = t.match(/^-?\d+ ('.*')$/);
+          return c ? c[1] : t;
+        });
+        if (vals.length === cnt) vecs[nm] = 'stk{' + vals.join(', ') + '}';
+      }
+            // stack / queue / priority_queue / deque (gdb pretty-printer format)
+      for (const m of (args + locals).matchAll(/^(\w+) = (?:@0x[0-9a-f]+: )?std::(?:(stack|queue|priority_queue) wrapping: std::(?:deque with (\d+) elements?|vector of length (\d+), capacity \d+)|(deque) with (\d+) elements?)(?: = (\{.*\}))?\s*$/gm)) {
+        const kind = m[2] || m[5];
+        const tag = { stack: 'stk', queue: 'que', priority_queue: 'pq', deque: 'dq' }[kind];
+        const n = Number(m[3] || m[4] || m[6]);
+        const items = n > 40 ? null : prettyList(m[7] || '{}');
+        vecs[m[1]] = items ? tag + '{' + items.join(', ') + '}' : tag + ' (' + n + ' items)';
       }
       all += '\n@@VECS@@' + JSON.stringify(vecs) + '\n';
       if (typeName) {

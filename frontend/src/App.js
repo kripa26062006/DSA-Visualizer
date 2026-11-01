@@ -478,6 +478,80 @@ public:
 };`,
     input: '3 1 3 2 1',
   },
+    {
+    name: 'Stack: push, top, pop',
+    code: `#include <iostream>
+#include <stack>
+using namespace std;
+int main() {
+stack<int> st;
+st.push(10);
+st.push(20);
+st.push(30);
+int a = st.top();
+st.pop();
+st.push(40);
+st.pop();
+st.pop();
+int left = st.size();
+return 0;
+}`,
+    input: '',
+  },
+  {
+    name: 'Stack: balanced brackets',
+    code: `#include <iostream>
+#include <stack>
+#include <string>
+using namespace std;
+int main() {
+string s = "({[]})";
+stack<char> st;
+bool ok = true;
+for (int i = 0; i < s.size(); i++) {
+char c = s[i];
+if (c == '(' || c == '{' || c == '[') {
+st.push(c);
+} else {
+if (st.empty()) {
+ok = false;
+break;
+}
+char t = st.top();
+st.pop();
+if ((c == ')' && t != '(') || (c == '}' && t != '{') || (c == ']' && t != '[')) {
+ok = false;
+break;
+}
+}
+}
+if (!st.empty()) {
+ok = false;
+}
+return 0;
+}`,
+    input: '',
+  },
+  {
+    name: 'Stack: next greater element',
+    code: `class Solution {
+public:
+    vector<int> nextGreater(vector<int>& nums) {
+        int n = nums.size();
+        vector<int> res(n, -1);
+        stack<int> st;
+        for (int i = 0; i < n; i++) {
+            while (!st.empty() && nums[st.top()] < nums[i]) {
+                res[st.top()] = nums[i];
+                st.pop();
+            }
+            st.push(i);
+        }
+        return res;
+    }
+};`,
+    input: '2 1 2 4 3',
+  },
   
 ];
 
@@ -494,8 +568,7 @@ const SEG_COLORS = ['#5DBFC0', '#FFD25E', '#FF8A5B', '#9ED36A'];
 // Solution::reverseList(this=0x7ffe..., head=0x5e39f0) -> Solution::reverseList(head=0x…39f0)
 const niceFrame = (f) => f.replace(/this=0x[0-9a-f]+,?\s*/, '').replace(/0x[0-9a-f]{6,}/g, (a) => '0x…' + a.slice(-4));
 
-const short = (v) => v.replace(/(0x[0-9a-f]{6,})( <[^>]*>)?/g, (m, a) => '0x…' + a.slice(-4));
-
+const short = (v) => v.replace(/^(?:umap|uset|omap|oset|stk|que|pq|dq)(?:\/\d+)?(?=\{)/, '').replace(/(0x[0-9a-f]{6,})( <[^>]*>)?/g, (m, a) => '0x…' + a.slice(-4));
 // ---------- tiny syntax highlighter (no library needed) ----------
 const KEYWORDS = /^(int|long|short|char|bool|void|float|double|auto|const|static|struct|class|public|private|return|if|else|for|while|do|break|continue|new|delete|using|namespace|include|true|false|nullptr|switch|case)$/;
 const TYPES = /^(ListNode|TreeNode|Solution|vector|string|cout|cin|endl|std|size_t)$/;
@@ -617,7 +690,20 @@ function effectsFor(steps, model, i) {
     if (old === undefined) {
       out.push('new ' + name + ' = ' + short(val));
     } else if (old !== val) {
-      if (isGrid(val) && isGrid(old)) {
+    if (isLin(val) && isLin(old)) {
+        const a = stkItems(val);
+        const b = stkItems(old);
+        const cnt = (arr, x) => arr.filter((y) => y === x).length;
+        if (a.length > b.length) out.push(name + '.push(' + (a.find((x) => cnt(a, x) > cnt(b, x)) || a[a.length - 1]) + ')');
+        else if (a.length < b.length) out.push(name + '.pop() → ' + (a.join() === b.slice(1).join() || val.startsWith('pq') ? b[0] : b[b.length - 1]));
+        else out.push(name + ' changed');
+      } else if (isStk(val) && isStk(old)) {
+        const a = stkItems(val);
+        const b = stkItems(old);
+        if (a.length > b.length) out.push(name + '.push(' + a[a.length - 1] + ')');
+        else if (a.length < b.length) out.push(name + '.pop() → ' + b[b.length - 1]);
+        else out.push(name + ' changed');
+      } else if (isGrid(val) && isGrid(old)) {
         const a = parse2D(val);
         const b = parse2D(old);
         a.forEach((row, r) => row.forEach((c, k) => { if (b[r] && b[r][k] !== c) out.push(name + '[' + r + '][' + k + '] = ' + c); }));
@@ -1154,8 +1240,16 @@ function SieveViz({ name, value, before, code, line, vars, current }) {
 }
 // ---------- hashing: unordered_map / map / unordered_set / set ----------
 const HASH_RE = /^(umap|uset|omap|oset)(?:\/(\d+))?\{([\s\S]*)\}$/;
-const isHash = (v) => HASH_RE.test(v);
-
+const STK_RE = /^stk\{([\s\S]*)\}$/;
+const isStk = (v) => STK_RE.test(v);
+const LIN_RE = /^(?:que|pq|dq)\{([\s\S]*)\}$/;
+const isLin = (v) => LIN_RE.test(v);
+const isHash = (v) => HASH_RE.test(v) || STK_RE.test(v) || LIN_RE.test(v);
+const stkItems = (v) => {
+  const m = v.match(STK_RE) || v.match(LIN_RE);
+  const body = m ? m[1].trim() : '';
+  return body ? (body.match(/'(?:[^'\\]|\\.)*'|[^,\s][^,]*/g) || []).map((x) => x.trim()) : [];
+};
 // split on a separator that is not inside "quotes"
 function splitQ(s, sep) {
   const out = [];
@@ -1222,8 +1316,87 @@ function HashViz({ name, value, before, current }) {
     </div>
   );
 }
+// ---------- stack: std::stack<T> ----------
+function StackViz({ name, value, before, line, current }) {
+  const items = stkItems(value);
+  const old = before && isStk(before) ? stkItems(before) : null;
+  const top = items.length - 1;
+  const pushed = old && items.length > old.length ? top : -1;
+  const popped = old && items.length < old.length ? old[old.length - 1] : null;
+  const peek = new RegExp('\\b' + name + '\\s*\\.\\s*top\\s*\\(').test(line) && items.length > 0;
+  return (
+    <div className="viz">
+      <div className="big-name">{name}</div>
+      <div className="h-cap">
+        {'stack · ' + items.length + (items.length === 1 ? ' item' : ' items') + (items.length ? ' · top = ' + items[top] : '')}
+      </div>
+      <div className="stk">
+        {popped !== null && (
+          <div key={'pop-' + current} className="stk-cell popped">{popped}<span className="stk-tag">popped</span></div>
+        )}
+        {items.length === 0 && <div className="stk-empty">empty</div>}
+        {items.map((_, i) => i).reverse().map((i) => (
+          <div key={i + (i === pushed ? '-' + current : '')}
+            className={'stk-cell' + (i === top ? ' top' : '') + (i === pushed ? ' changed' : '')}>
+            {items[i]}
+            {i === top && <span className="stk-tag">{i === pushed ? '◀ top (just pushed)' : '◀ top'}</span>}
+          </div>
+        ))}
+      </div>
+      {peek && <div className="reads">next line reads: <b>{name + '.top()'}</b>{' → ' + items[top]}</div>}
+    </div>
+  );
+}
+// ---------- queue / priority_queue / deque ----------
+function QueueViz({ name, value, before, line, current }) {
+  const kind = value.slice(0, value.indexOf('{'));
+  const isPq = kind === 'pq';
+  const items = stkItems(value);
+  const old = before && isLin(before) ? stkItems(before) : null;
+  const cnt = (arr, x) => arr.filter((y) => y === x).length;
+  let added = -1;
+  let gone = null;
+  let goneFront = true;
+  if (old && items.length > old.length) {
+    if (isPq) added = items.findIndex((x) => cnt(items, x) > cnt(old, x));
+    else added = kind === 'dq' && items.slice(1).join() === old.join() ? 0 : items.length - 1;
+  }
+  if (old && items.length < old.length) {
+    goneFront = isPq || items.join() === old.slice(1).join();
+    gone = goneFront ? old[0] : old[old.length - 1];
+  }
+  const tagOf = (i) => (isPq ? (i === 0 ? 'top' : '')
+    : [i === 0 ? 'front' : '', i === items.length - 1 ? 'back' : ''].filter(Boolean).join(' / '));
+  const pk = line.match(new RegExp('\\b' + name + '\\s*\\.\\s*(front|back|top)\\s*\\('));
+  const peekVal = pk && items.length ? (pk[1] === 'back' ? items[items.length - 1] : items[0]) : null;
+  const label = { que: 'queue · first in, first out', pq: 'priority_queue · biggest comes out first', dq: 'deque · both ends' }[kind];
+  const ghost = gone !== null && (
+    <div key={'pop-' + current} className="que-cell popped">{gone}<span className="que-tag">popped</span></div>
+  );
+  return (
+    <div className="viz">
+      <div className="big-name">{name}</div>
+      <div className="h-cap">{label + ' · ' + items.length + (items.length === 1 ? ' item' : ' items')}</div>
+      <div className="que">
+        {goneFront && ghost}
+        {items.length === 0 && <div className="stk-empty">empty</div>}
+        {items.map((x, i) => (
+          <div key={i + (i === added ? '-' + current : '')}
+            className={'que-cell' + (i === 0 ? ' first' : '') + (i === added ? ' changed' : '')}>
+            {x}
+            <span className="que-tag">{tagOf(i)}</span>
+            {isPq && <span className="que-i">{i}</span>}
+          </div>
+        ))}
+        {!goneFront && ghost}
+      </div>
+      {peekVal !== null && <div className="reads">next line reads: <b>{name + '.' + pk[1] + '()'}</b>{' → ' + peekVal}</div>}
+    </div>
+  );
+}
 
 // ---------- the heap drawing (SVG) ----------
+
 function HeapView({ steps, current, model, code }) {
   const m = model.per[current];
   const prev = current > 0 ? model.per[current - 1] : null;
@@ -1245,6 +1418,8 @@ function HeapView({ steps, current, model, code }) {
         <div className="big-arrays">
           {shapes.map(([name, value]) => {
                        const props = { key: name, name, value, before: /^"/.test(before[name] || '') ? strArr(before[name]) : before[name], code, line, vars, current };
+if (isStk(value)) return <StackViz {...props} />;
+            if (isLin(value)) return <QueueViz {...props} />;
             if (isHash(value)) return <HashViz {...props} />;
             if (isGrid(value)) return <GridViz {...props} />;
             return isFlags(value, code) ? <SieveViz {...props} /> : <ArrayViz {...props} />;
