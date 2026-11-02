@@ -1,23 +1,17 @@
 #include <iostream>
-#include <string>
+#include <vector>
 using namespace std;
-struct TrieNode {
-    TrieNode* next[26];
-    bool end;
-};
-void insert(TrieNode* root, string word) {
-    TrieNode* cur = root;
-    for (char c : word) {
-        int i = c - 'a';
-        if (cur->next[i] == NULL) cur->next[i] = new TrieNode();
-        cur = cur->next[i];
-    }
-    cur->end = true;
+void solve(vector<int>& nums, int i, vector<int>& cur, vector<vector<int>>& res) {
+    if (i == nums.size()) { res.push_back(cur); return; }
+    cur.push_back(nums[i]);
+    solve(nums, i + 1, cur, res);
+    cur.pop_back();
+    solve(nums, i + 1, cur, res);
 }
 int main() {
-    TrieNode* root = new TrieNode();
-    insert(root, "cat");
-    insert(root, "car");
-    insert(root, "dog");
+    vector<int> nums = {1, 2, 3};
+    vector<int> cur;
+    vector<vector<int>> res;
+    solve(nums, 0, cur, res);
     return 0;
 }

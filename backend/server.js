@@ -734,7 +734,17 @@ typeName = typeMatch ? typeMatch[1] : null;
       const bt = await g.ask('bt');
       if (isLeet && !bt.includes(startAt)) break;
       const args = await g.ask('info args');
-      const locals = await g.ask('info locals');
+      let locals = await g.ask('info locals');
+      // global vectors (e.g. vector<vector<int>> res;) are not in info locals
+      let dep0 = 0;
+      for (const ln of userCode.split('\n')) {
+        const gm = dep0 === 0 && ln.match(/^\s*(?:static\s+)?(?:std::)?vector\s*<.*>\s+(\w+)\s*(?:=|;)/);
+        dep0 += (ln.match(/\{/g) || []).length - (ln.match(/\}/g) || []).length;
+        if (!gm || new RegExp('^' + gm[1] + ' = ', 'm').test(args + locals)) continue;
+        const go = await g.ask('print ' + gm[1]);
+        const gv = go.match(/\$\d+ = ([\s\S]*)/);
+        if (gv) locals += gm[1] + ' = ' + gv[1].replace(/\s*\n\s*/g, ' ').trim() + '\n';
+      }
       all += bt + args + locals;
       recorded++;
 
@@ -780,9 +790,25 @@ typeName = typeMatch ? typeMatch[1] : null;
         if (n < 0 || n > 200) { vecs[nm] = 'vector (' + n + ' items)'; continue; }
         const elOut = await g.ask('print *' + nm + '._M_impl._M_start@' + n);
         const em = elOut.match(/=\s*\{([^}]*)\}/);
-        vecs[nm] = em && /^[-\d.,\s]+$/.test(em[1])
-          ? '[' + em[1].trim().replace(/,\s*/g, ' ') + ']'
-          : 'vector (' + n + ' items)';
+                if (em && /^[-\d.,\s]+$/.test(em[1])) { vecs[nm] = '[' + em[1].trim().replace(/,\s*/g, ' ') + ']'; continue; }
+        vecs[nm] = 'vector (' + n + ' items)';
+        if (n <= 40) {
+          // vector of vectors: read every row
+          const rc = [];
+          for (let r = 0; r < n; r++) {
+            const e = nm + '._M_impl._M_start[' + r + ']._M_impl';
+            rc.push('echo @@R\\n', 'print *' + e + '._M_start@(long)(' + e + '._M_finish - ' + e + '._M_start)');
+          }
+          const rOut = await g.ask(rc.join('\n'));
+          const rows = rOut.split('@@R').slice(1).map((c) => { const mm = c.match(/=\s*\{([^}]*)\}/); return mm ? mm[1].trim() : ''; });
+          if (rows.length === n && rows.every((r) => /^[-\d.,\s]*$/.test(r))) {
+            const isRes = new RegExp('\\b' + nm + '\\s*\\.\\s*(push_back|emplace_back)\\s*\\(').test(userCode);
+            const ragged = rows.some((r) => r.split(',').length !== rows[0].split(',').length) || rows.some((r) => !r);
+            vecs[nm] = (isRes || ragged)
+              ? 'res{' + rows.map((r) => '[' + r.replace(/,\s*/g, ' ') + ']').join(', ') + '}'
+              : '{' + rows.map((r) => '{' + r + '}').join(', ') + '}';
+          }
+        }
       }
 
       // int a[] parameters arrive as plain pointers: read n elements from memory

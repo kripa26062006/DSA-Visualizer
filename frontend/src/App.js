@@ -914,6 +914,30 @@ function effectsFor(steps, model, i) {
 // ---------- arrays: read the index variables out of the source ----------
 const cellsOf = (v) => v.slice(1, -1).split(' ').filter((c) => c !== '');
 const isGrid = (v) => v.startsWith('{{');
+const isRes = (v) => v.startsWith('res{');
+function ResultViz({ name, value, before }) {
+  const rowsOf = (v) => (v && v.startsWith('res{') ? (v.match(/\[[^\]]*\]/g) || []) : null);
+  const rows = rowsOf(value) || [];
+  const prevRows = rowsOf(before);
+  const old = prevRows ? prevRows.length : (before === '[]' ? 0 : rows.length);
+  return (
+    <div className="viz">
+      <div className="big-name">{name}</div>
+      <div className="h-cap">{'answers found so far · ' + rows.length}</div>
+      <div className="res-list">
+        {rows.map((r, i) => {
+          const items = r.slice(1, -1).trim();
+          return (
+            <div key={i} className={'res-row' + (i >= old ? ' changed' : '')}>
+              <span className="res-i">{i}</span>
+              {items ? items.split(/\s+/).map((x, j) => <span key={j} className="res-c">{x}</span>) : <span className="res-e">empty</span>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 const parse2D = (v) => v.slice(2, -2).split(/\},\s*\{/).map((r) => r.split(/,\s*/));
 
 // evaluate a tiny index expression like "j + 1" with the current variables
@@ -1776,8 +1800,8 @@ function HeapView({ steps, current, model, code }) {
        const strArr = (v) => '[' + v.slice(1, -1).split('').map((c) => (c === ' ' ? '␣' : c)).join(' ') + ']';
     const isStr = (n, v) => /^"[^"]*"$/.test(v) && v.length > 2 && v.length <= 42 && accessesIn(code, n).length > 0;
     const shapes = Object.entries(vars)
-.filter(([, v]) => v.startsWith('[') || isGrid(v) || isHash(v))
-      .concat(Object.entries(vars).filter(([n, v]) => isStr(n, v)).map(([n, v]) => [n, strArr(v)]));
+.filter(([, v]) => v.startsWith('[') || isGrid(v) || isHash(v) || isRes(v))
+    .concat(Object.entries(vars).filter(([n, v]) => isStr(n, v)).map(([n, v]) => [n, strArr(v)]));
     const line = (code.split('\n')[steps[current].line - 1] || '');
     const showBits = usesBits(code) && Object.values(vars).some((v) => /^-?\d+$/.test(String(v).trim()));
     const mathNow = usesMath(code) ? lastMathOps(steps, current, code) : { ops: [], stale: false };
@@ -1791,6 +1815,7 @@ const treeNow = steps[current].tree && Object.keys(steps[current].tree.nodes || 
 if (isStk(value)) return <StackViz {...props} />;
             if (isLin(value)) return <QueueViz {...props} />;
             if (isHash(value)) return <HashViz {...props} />;
+            if (isRes(value)) return <ResultViz {...props} />;
             if (isGrid(value)) return <GridViz {...props} />;
            const arr = isFlags(value, code) ? <SieveViz {...props} /> : <ArrayViz {...props} />;
            if (!isHeapCode(code) || !value.startsWith('[')) return arr;
