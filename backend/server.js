@@ -3,6 +3,8 @@ const app = express();
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const fs = require('fs');
+const os = require('os');
+const path = require('path');
 console.log('File started running');
 const { exec, spawn } = require('child_process');
 
@@ -83,14 +85,31 @@ function parseOutput(rawOutput) {
   return steps;
 }
 
-app.use(cors());
-app.use(bodyParser.json());
+app.set('trust proxy', 1);
+app.use(cors(process.env.ALLOWED_ORIGIN ? { origin: process.env.ALLOWED_ORIGIN.split(',') } : undefined));
+app.use(bodyParser.json({ limit: '100kb' }));
+
+// stop spam: max 15 runs per minute per visitor, max 3 runs at the same time
+const hits = new Map();
+let busy = 0;
+function guard(req, res, next) {
+  const now = Date.now();
+  const recent = (hits.get(req.ip) || []).filter((t) => now - t < 60000);
+  if (recent.length >= 15) return res.status(429).send({ success: false, error: 'Too many runs. Wait a minute and try again.' });
+  if (busy >= 3) return res.status(503).send({ success: false, error: 'The server is busy right now. Try again in a few seconds.' });
+  recent.push(now);
+  hits.set(req.ip, recent);
+  busy++;
+  res.on('close', () => { busy--; });
+  next();
+}
 
 app.get('/', (req, res) => {
   res.send('Server is working!');
 });
 
 app.post('/compile', (req, res) => {
+  return res.status(410).send({ success: false, error: 'This route is disabled.' });
   const code = req.body.code;
   const input = req.body.input || '';
   const instrumentedCode = instrumentCode(code);
@@ -315,8 +334,10 @@ if (raw.startsWith('@@TRIE@@')) {
   return shown.map((s, i) => ({ step: i + 1, line: s.line, variables: s.variables, stack: s.stack,chains: s.chains, tree: s.tree, trie: s.trie }));
 }
 
-function startGdb(exe) {
-  const gdb = spawn('gdb', ['-q', exe]);
+function startGdb(exe, cwd) {
+const gdb = process.platform === 'linux'
+    ? spawn('sh', ['-c', 'ulimit -t 60 -f 4096 -u 512; exec gdb -q "$0"', exe], { cwd })
+    : spawn('gdb', ['-q', exe], { cwd });
   let buffer = '';
   let waiting = null;
   let closed = false;
@@ -628,6 +649,7 @@ function prettyList(body) {
   return out;
 }
 app.post('/trace', (req, res) => {
+  return res.status(410).send({ success: false, error: 'This route is disabled.' });
   const code = req.body.code;
   const input = req.body.input || '';
   fs.writeFileSync('temp.cpp', code);
@@ -654,8 +676,7 @@ app.post('/trace', (req, res) => {
     });
   });
 });
-
-app.post('/tracelist', (req, res) => {
+app.post('/tracelist', guard, (req, res) => {
   const userCode = req.body.code;
   const input = req.body.input || '';
   const bare = userCode.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
@@ -694,19 +715,22 @@ typeName = typeMatch ? typeMatch[1] : null;
     }  
   }
 
-  fs.writeFileSync('temp.cpp', src);
-  fs.writeFileSync('input.txt', input);
-  exec('g++ -std=c++17 -g -static temp.cpp -o temp.exe', async (error, stdout, stderr) => {
+ const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'viz-'));
+  res.on('close', () => fs.rm(dir, { recursive: true, force: true }, () => {}));
+  fs.writeFileSync(path.join(dir, 'temp.cpp'), src);
+ fs.writeFileSync(path.join(dir, 'input.txt'), input);
+  exec('g++ -std=c++17 -g -static temp.cpp -o temp.exe', { cwd: dir, timeout: 30000 }, async (error, stdout, stderr) => {
     if (error) {
       res.send({ success: false, error: stderr });
       return;
     }
 
-    const g = startGdb('temp.exe');
+  const g = startGdb('temp.exe', dir);
     const timer = setTimeout(() => g.kill(), 60000);
     let all = '';
 
-    await g.ask('set pagination off');
+   await g.ask('set pagination off');
+    if (process.env.PP) await g.ask("python import sys; sys.path.insert(0,'/usr/share/gcc/python'); from libstdcxx.v6.printers import register_libstdcxx_printers; register_libstdcxx_printers(None)");
     await g.ask('set width 0');
     await g.ask('set print repeats unlimited');
     await g.ask('break ' + startAt);
@@ -1029,7 +1053,6 @@ typeName = typeMatch ? typeMatch[1] : null;
     res.send({ success: true, steps: parseGdb(all, userCode.split('\n')) });
   });
 });
-
-app.listen(5000, () => {
+app.listen(process.env.PORT || 5000, () => {
   console.log('Server running on port 5000 - hashing version');
 });
