@@ -915,6 +915,52 @@ function effectsFor(steps, model, i) {
 const cellsOf = (v) => v.slice(1, -1).split(' ').filter((c) => c !== '');
 const isGrid = (v) => v.startsWith('{{');
 const isRes = (v) => v.startsWith('res{');
+const isAdjName = (n) => /adj|graph|^g$|nbr|neigh/i.test(n);
+function GraphViz({ adj, vars }) {
+  const rows = (adj.match(/\[[^\]]*\]/g) || []).map((r) => r.slice(1, -1).trim().split(/\s+/).filter(Boolean).map(Number));
+  const n = rows.length;
+  if (n === 0 || n > 24) return null;
+  const R = n > 10 ? 125 : 105, cx = 190, cy = 150;
+  const pos = rows.map((_, i) => { const a = -Math.PI / 2 + (2 * Math.PI * i) / n; return [cx + R * Math.cos(a), cy + R * Math.sin(a)]; });
+  const num = (k) => (vars[k] !== undefined && /^-?\d+$/.test(String(vars[k]).trim()) && Number(vars[k]) >= 0 && Number(vars[k]) < n ? Number(vars[k]) : null);
+  const pick = (names) => { for (const k of names) { const v = num(k); if (v !== null) return v; } return null; };
+  const cur = pick(['u', 'node', 'cur', 'curr', 'src', 'start', 's', 'x']);
+  const nxt = pick(['v', 'nxt', 'next', 'nb', 'to', 'child', 'neighbor']);
+  const arrOf = (re) => { const k = Object.keys(vars).find((x) => re.test(x) && String(vars[x]).startsWith('[')); return k ? String(vars[k]).slice(1, -1).trim().split(/\s+/) : null; };
+  const vis = arrOf(/^(vis|visited|seen|done|used)$/i);
+  const dist = arrOf(/^(dist|d|level|depth)$/i);
+  const edges = [];
+  rows.forEach((r, u) => r.forEach((v) => { if (v >= 0 && v < n && v !== u && (u < v || !rows[v].includes(u))) edges.push([u, v, rows[v].includes(u)]); }));
+  const R0 = 20;
+  return (
+    <div className="viz">
+      <div className="big-name">graph · {n} nodes · {edges.length} edges</div>
+      <svg className="gv" viewBox="0 0 380 300">
+        <defs><marker id="gv-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#14214F" /></marker></defs>
+        {edges.map(([u, v, both], i) => {
+          const [x1, y1] = pos[u], [x2, y2] = pos[v];
+          const d = Math.hypot(x2 - x1, y2 - y1) || 1;
+          const ex = x2 - ((x2 - x1) / d) * (both ? 0 : R0 + 2), ey = y2 - ((y2 - y1) / d) * (both ? 0 : R0 + 2);
+          const hot = cur !== null && nxt !== null && ((u === cur && v === nxt) || (u === nxt && v === cur));
+          return <line key={i} className={'gv-edge' + (hot ? ' hot' : '')} x1={x1} y1={y1} x2={ex} y2={ey} markerEnd={both ? undefined : 'url(#gv-arr)'} />;
+        })}
+        {pos.map(([x, y], i) => {
+          const seen = vis && (vis[i] === '1' || vis[i] === 'true');
+          const cls = 'gv-node' + (i === cur ? ' cur' : i === nxt ? ' nxt' : seen ? ' seen' : '');
+          const dv = dist && dist[i] !== undefined ? (Math.abs(Number(dist[i])) > 100000000 ? '∞' : dist[i]) : null;
+          return (
+            <g key={i} className={cls}>
+              <circle cx={x} cy={y} r={R0} />
+              <text x={x} y={y + 5} textAnchor="middle" className="gv-t">{i}</text>
+              {dv !== null && <text x={x} y={y + R0 + 14} textAnchor="middle" className="gv-d">{dv}</text>}
+            </g>
+          );
+        })}
+      </svg>
+      <div className="h-cap">red = current node · yellow = neighbour being looked at · green = visited</div>
+    </div>
+  );
+}
 function ResultViz({ name, value, before }) {
   const rowsOf = (v) => (v && v.startsWith('res{') ? (v.match(/\[[^\]]*\]/g) || []) : null);
   const rows = rowsOf(value) || [];
@@ -1800,16 +1846,19 @@ function HeapView({ steps, current, model, code }) {
        const strArr = (v) => '[' + v.slice(1, -1).split('').map((c) => (c === ' ' ? '␣' : c)).join(' ') + ']';
     const isStr = (n, v) => /^"[^"]*"$/.test(v) && v.length > 2 && v.length <= 42 && accessesIn(code, n).length > 0;
     const shapes = Object.entries(vars)
-.filter(([, v]) => v.startsWith('[') || isGrid(v) || isHash(v) || isRes(v))
-    .concat(Object.entries(vars).filter(([n, v]) => isStr(n, v)).map(([n, v]) => [n, strArr(v)]));
+.filter(([n, v]) => !n.startsWith('__') && (v.startsWith('[') ||isGrid(v) || isHash(v) || isRes(v)) && !(isRes(v) && isAdjName(n)))
+    .concat(Object.entries(vars)
+    .filter(([n, v]) => isStr(n, v)).map(([n, v]) => [n, strArr(v)]));
     const line = (code.split('\n')[steps[current].line - 1] || '');
-    const showBits = usesBits(code) && Object.values(vars).some((v) => /^-?\d+$/.test(String(v).trim()));
+const showBits = !Object.entries(vars).some(([n, v]) => isRes(v) && isAdjName(n)) && usesBits(code) && Object.values(vars).some((v) => /^-?\d+$/.test(String(v).trim()));
     const mathNow = usesMath(code) ? lastMathOps(steps, current, code) : { ops: [], stale: false };
 const treeNow = steps[current].tree && Object.keys(steps[current].tree.nodes || {}).length > 0;
+const graphEntry = Object.entries(vars).find(([n, v]) => isRes(v) && isAdjName(n));
     const trieNow = steps[current].trie && Object.keys(steps[current].trie.nodes || {}).length > 0;
-    if (shapes.length || showBits || mathNow.ops.length || treeNow || trieNow) {
+    if (shapes.length || showBits || mathNow.ops.length || treeNow || trieNow|| graphEntry) {
       return (
-        <div className="big-arrays">
+       <div className="big-arrays">
+          {graphEntry && <GraphViz adj={graphEntry[1]} vars={vars} />}
           {shapes.map(([name, value]) => {
                        const props = { key: name, name, value, before: /^"/.test(before[name] || '') ? strArr(before[name]) : before[name], code, line, vars, current };
 if (isStk(value)) return <StackViz {...props} />;
@@ -1825,7 +1874,8 @@ if (isStk(value)) return <StackViz {...props} />;
             return <div key={name} className="viz">{arr}<HeapTree items={(toArr(value) || []).slice(0, lim)} before={toArr(before[name])} name={name} current={current} /></div>;
           })}
 {treeNow && <TreeViz steps={steps} current={current} code={code} vars={vars} />}
-                   {trieNow && <TrieViz steps={steps} current={current} vars={vars} />}
+{trieNow && <TrieViz steps={steps} current={current} vars={vars} />}
+
           {mathNow.ops.length > 0 && <MathViz ops={mathNow.ops} stale={mathNow.stale} />}
           {showBits && <BitsViz vars={vars} before={before} line={line} current={current} />}
         </div>

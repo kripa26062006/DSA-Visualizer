@@ -366,3 +366,14 @@ kbd { font: 11px var(--mono); }
 .res-i { font: 12px var(--mono); margin-right: 6px; opacity: 0.7; }
 .res-c { min-width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 2px solid currentColor; font: 600 16px var(--mono); }
 .res-e { font: 14px var(--mono); }
+/* ---- graphs ---- */
+.gv { display: block; margin: 6px auto 0; width: 100%; max-width: 420px; height: auto; }
+.gv-edge { stroke: var(--ink); stroke-width: 3; }
+.gv-edge.hot { stroke: var(--red); stroke-width: 5; }
+.gv-node circle { fill: var(--cream); stroke: var(--ink); stroke-width: 3; }
+.gv-node.seen circle { fill: #BFE3A4; }
+.gv-node.nxt circle { fill: #FFD25E; }
+.gv-node.cur circle { fill: var(--red); }
+.gv-node.cur .gv-t { fill: #fff; }
+.gv-t { font: 600 17px var(--mono); fill: var(--ink); }
+.gv-d { font: 600 13px var(--mono); fill: var(--ink); }

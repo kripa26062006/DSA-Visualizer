@@ -738,7 +738,7 @@ typeName = typeMatch ? typeMatch[1] : null;
       // global vectors (e.g. vector<vector<int>> res;) are not in info locals
       let dep0 = 0;
       for (const ln of userCode.split('\n')) {
-        const gm = dep0 === 0 && ln.match(/^\s*(?:static\s+)?(?:std::)?vector\s*<.*>\s+(\w+)\s*(?:=|;)/);
+        const gm = dep0 === 0 && ln.match(/^\s*(?:static\s+)?(?:(?:std::)?vector\s*<.*>|int|long long|long|bool|double|float|char|unsigned)\s+(\w+)\s*(?:\[[^\]]*\]\s*)*(?:=|;)/);
         dep0 += (ln.match(/\{/g) || []).length - (ln.match(/\}/g) || []).length;
         if (!gm || new RegExp('^' + gm[1] + ' = ', 'm').test(args + locals)) continue;
         const go = await g.ask('print ' + gm[1]);
@@ -749,10 +749,30 @@ typeName = typeMatch ? typeMatch[1] : null;
       recorded++;
 
       // vectors: read the real elements out of memory
-            const vecs = {};
+           const vecs = {};
+      // arrays of vectors, e.g.  vector<int> adj[6];  (adjacency lists)
+      const avNames = new Set();
+      for (const m of (args + locals).matchAll(/^(\w+) = (\{(?:std::vector|<std::_Vector_base).*)$/gm)) {
+        const wt = await g.ask('whatis ' + m[1]);
+        const am = wt.match(/type = (?:std::)?vector<.*> \[(\d+)\]/);
+        if (!am) continue;
+        const cnt = Number(am[1]);
+        avNames.add(m[1]);
+        if (cnt > 40) { vecs[m[1]] = 'vector (' + cnt + ' items)'; continue; }
+        const rc = [];
+        for (let r = 0; r < cnt; r++) {
+          const e = m[1] + '[' + r + ']._M_impl';
+          rc.push('echo @@R\\n', 'print *' + e + '._M_start@(long)(' + e + '._M_finish - ' + e + '._M_start)');
+        }
+        const rOut = await g.ask(rc.join('\n'));
+        const rows = rOut.split('@@R').slice(1).map((c) => { const mm = c.match(/=\s*\{([^}]*)\}/); return mm ? mm[1].trim() : ''; });
+        if (rows.length === cnt && rows.every((r) => /^[-\d.,\s]*$/.test(r))) {
+          vecs[m[1]] = 'res{' + rows.map((r) => '[' + r.replace(/,\s*/g, ' ') + ']').join(', ') + '}';
+        }
+      }
       for (const m of (args + locals).matchAll(/^(\w+) = (.*(?:std::vector|_Vector_base|_Bvector_base).*)$/gm)) {
         const nm = m[1];
-
+        if (avNames.has(nm)) continue;
         // vector<bool> is stored as packed bits, so it is read differently
         if (/_Bvector_base|vector<bool/.test(m[2])) {
           const st = nm + '._M_impl._M_start';
