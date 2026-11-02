@@ -57,7 +57,7 @@ button:disabled { cursor: default; opacity: 0.4; }
   font: 13px var(--mono);
 }
 .top select option { color: var(--ink); background: #fff; }
-.stdin { display: flex; align-items: center; gap: 8px; width: 190px; }
+.stdin { display: flex; align-items: center; gap: 8px; width: 300px; }
 .stdin span { color: #9FB0D8; }
 .stdin input { border: 0; background: none; outline: 0; font: 13px var(--mono); color: var(--cream); width: 100%; }
 .stdin input::placeholder { color: #7F8DB8; }
@@ -342,3 +342,20 @@ kbd { font: 11px var(--mono); }
 .que-cell.popped { background: transparent; border-style: dashed; box-shadow: none; text-decoration: line-through; opacity: 0.7; animation: gone 1.6s ease-out forwards; }
 .que-tag { position: absolute; top: -24px; left: 50%; transform: translateX(-50%); font: 600 13px var(--mono); color: var(--ink); white-space: nowrap; text-decoration: none; }
 .que-i { position: absolute; bottom: -22px; left: 50%; transform: translateX(-50%); font: 12px var(--mono); color: var(--ink); text-decoration: none; }
+/* ---- heap as a tree ---- */
+.htree { display: block; margin: 6px auto 0; max-width: 100%; height: auto; overflow: visible; }
+.ht-edge { stroke: var(--ink); stroke-width: 3; }
+.ht-node circle { fill: var(--cream); stroke: var(--ink); stroke-width: 3; }
+.ht-node.root circle { fill: #FFD25E; }
+.ht-node.changed circle { fill: var(--red); }
+.ht-node.changed { animation: pop 0.5s ease-out; transform-box: fill-box; transform-origin: center; }
+.ht-v { font: 600 17px var(--mono); fill: var(--ink); }
+.ht-node.changed .ht-v { fill: #fff; }
+.ht-i { font: 12px var(--mono); fill: var(--ink); }
+/* ---- binary trees ---- */
+.ht-edge.fresh { stroke: var(--red); stroke-width: 4; stroke-dasharray: 100; animation: draw 0.6s ease-out forwards; }
+.ht-node.vis circle { fill: #BFE3A4; }
+.ht-chip { fill: var(--ink); }
+.ht-chip-t { font: 600 13px var(--mono); fill: var(--cream); }
+/* ---- trie ---- */
+.ht-node circle.tr-ring { fill: none; stroke: var(--ink); stroke-width: 3; }

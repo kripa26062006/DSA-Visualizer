@@ -479,6 +479,100 @@ public:
     input: '3 1 3 2 1',
   },
     {
+    name: 'Tree: max depth (LeetCode, type the tree in stdin)',
+    code: `class Solution {
+public:
+    int maxDepth(TreeNode* root) {
+        if (root == NULL) return 0;
+        int l = maxDepth(root->left);
+        int r = maxDepth(root->right);
+        return 1 + max(l, r);
+    }
+};`,
+    input: '3 9 20 null null 15 7',
+  },
+  {
+    name: 'Tree: BST insert + inorder',
+    code: `#include <iostream>
+using namespace std;
+struct Node {
+    int val;
+    Node* left;
+    Node* right;
+    Node(int v) : val(v), left(NULL), right(NULL) {}
+};
+Node* insert(Node* root, int x) {
+    if (root == NULL) return new Node(x);
+    if (x < root->val) root->left = insert(root->left, x);
+    else root->right = insert(root->right, x);
+    return root;
+}
+void inorder(Node* root) {
+    if (root == NULL) return;
+    inorder(root->left);
+    cout << root->val << " ";
+    inorder(root->right);
+}
+int main() {
+    Node* root = NULL;
+    root = insert(root, 5);
+    root = insert(root, 3);
+    root = insert(root, 8);
+    root = insert(root, 1);
+    inorder(root);
+    return 0;
+}`,
+    input: '',
+  },
+  {
+    name: 'Heap: priority_queue (max and min)',
+    code: `#include <iostream>
+#include <queue>
+#include <vector>
+using namespace std;
+int main() {
+priority_queue<int> mx;
+mx.push(5);
+mx.push(9);
+mx.push(2);
+mx.push(7);
+mx.pop();
+priority_queue<int, vector<int>, greater<int>> mn;
+mn.push(5);
+mn.push(9);
+mn.push(2);
+mn.push(7);
+mn.pop();
+return 0;
+}`,
+    input: '',
+  },
+  {
+    name: 'Heap: build a min-heap by hand (sift up)',
+    code: `#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
+void push(vector<int>& h, int x) {
+h.push_back(x);
+int i = h.size() - 1;
+while (i > 0 && h[(i - 1) / 2] > h[i]) {
+swap(h[(i - 1) / 2], h[i]);
+i = (i - 1) / 2;
+}
+}
+int main() {
+vector<int> h;
+push(h, 5);
+push(h, 8);
+push(h, 3);
+push(h, 1);
+push(h, 6);
+return 0;
+}`,
+    input: '',
+  },
+  {
     name: 'Stack: push, top, pop',
     code: `#include <iostream>
 #include <stack>
@@ -552,7 +646,96 @@ public:
 };`,
     input: '2 1 2 4 3',
   },
-  
+    {
+    name: 'Trie: insert + search (array children)',
+    code: `#include <iostream>
+#include <string>
+using namespace std;
+struct TrieNode {
+TrieNode* children[26] = {};
+bool isEnd = false;
+};
+void insertWord(TrieNode* root, string word) {
+TrieNode* cur = root;
+for (int i = 0; i < word.size(); i++) {
+int idx = word[i] - 'a';
+if (cur->children[idx] == NULL) {
+cur->children[idx] = new TrieNode();
+}
+cur = cur->children[idx];
+}
+cur->isEnd = true;
+}
+bool searchWord(TrieNode* root, string word) {
+TrieNode* cur = root;
+for (int i = 0; i < word.size(); i++) {
+int idx = word[i] - 'a';
+if (cur->children[idx] == NULL) {
+return false;
+}
+cur = cur->children[idx];
+}
+return cur->isEnd;
+}
+int main() {
+TrieNode* root = new TrieNode();
+insertWord(root, "app");
+insertWord(root, "apple");
+insertWord(root, "ape");
+bool a = searchWord(root, "app");
+bool b = searchWord(root, "ap");
+return 0;
+}`,
+    input: '',
+  },
+  {
+    name: 'Trie: class Trie (LeetCode style, with main)',
+    code: `#include <iostream>
+#include <string>
+using namespace std;
+struct Node {
+Node* next[26] = {};
+bool end = false;
+};
+class Trie {
+public:
+Node* root;
+Trie() {
+root = new Node();
+}
+void insert(string word) {
+Node* cur = root;
+for (int i = 0; i < word.size(); i++) {
+int c = word[i] - 'a';
+if (cur->next[c] == NULL) {
+cur->next[c] = new Node();
+}
+cur = cur->next[c];
+}
+cur->end = true;
+}
+bool startsWith(string prefix) {
+Node* cur = root;
+for (int i = 0; i < prefix.size(); i++) {
+int c = prefix[i] - 'a';
+if (cur->next[c] == NULL) {
+return false;
+}
+cur = cur->next[c];
+}
+return true;
+}
+};
+int main() {
+Trie t;
+t.insert("car");
+t.insert("cat");
+t.insert("dog");
+bool ok = t.startsWith("ca");
+return 0;
+}`,
+    input: '',
+  },
 ];
 
 // ---------- small helpers ----------
@@ -1347,6 +1530,190 @@ function StackViz({ name, value, before, line, current }) {
     </div>
   );
 }
+// ---------- binary trees ----------
+function TreeViz({ steps, current, code, vars }) {
+  const tree = steps[current].tree;
+  const before = current > 0 ? steps[current - 1].tree : null;
+  const nodes = tree.nodes;
+  const pos = {};
+  const seen = new Set();
+  let nextX = 0;
+  let maxD = 0;
+  const place = (a, d) => {
+    const n = nodes[a];
+    if (!n || seen.has(a) || d > 9) return;
+    seen.add(a);
+    if (n.l !== '0x0') place(n.l, d + 1);
+    pos[a] = { x: nextX++, d };
+    if (d > maxD) maxD = d;
+    if (n.r !== '0x0') place(n.r, d + 1);
+  };
+  tree.roots.forEach((r) => place(r, 0));
+  const UX = 56;
+  const UY = 80;
+  const W = Math.max(nextX, 2) * UX + 30;
+  const H = (maxD + 1) * UY + 56;
+  const px = (a) => 30 + pos[a].x * UX - UX / 2 + 14;
+  const py = (a) => 52 + pos[a].d * UY;
+  const names = {};
+  Object.entries(vars).forEach(([n, v]) => { if (nodes[v]) (names[v] = names[v] || []).push(n); });
+  const trav = /inorder|preorder|postorder|traversal|traverse|dfs|bfs|visit|level/i.test(code);
+  const visited = new Set();
+  if (trav) {
+    for (let k = 0; k <= current; k++) {
+      Object.values(steps[k].variables).forEach((v) => { if (nodes[v]) visited.add(v); });
+    }
+  }
+  const bn = before ? before.nodes : null;
+  const nodeChanged = (a) => !!bn && (!bn[a] || bn[a].v !== nodes[a].v);
+  const edgeNew = (a, side) => !!bn && (!bn[a] || bn[a][side] !== nodes[a][side]);
+  const count = Object.keys(pos).length;
+  return (
+    <div className="viz">
+      <div className="h-cap">{'binary tree · ' + count + (count === 1 ? ' node' : ' nodes') + ' · yellow = a pointer is here' + (trav ? ' · green = already visited' : '')}</div>
+      <svg className="htree" width={W} height={H} viewBox={'0 0 ' + W + ' ' + H}>
+        {Object.keys(pos).map((a) => ['l', 'r'].map((side) => {
+          const c = nodes[a][side];
+          if (!pos[c]) return null;
+          return <line key={'e' + a + side + (edgeNew(a, side) ? '-' + current : '')} x1={px(a)} y1={py(a)} x2={px(c)} y2={py(c)}
+            className={'ht-edge' + (edgeNew(a, side) ? ' fresh' : '')} />;
+        }))}
+        {Object.keys(pos).map((a) => {
+          const here = !!names[a];
+          const cls = 'ht-node' + (nodeChanged(a) ? ' changed' : here ? ' root' : visited.has(a) ? ' vis' : '');
+          return (
+            <g key={a + (nodeChanged(a) ? '-' + current : '')} className={cls}>
+              <circle cx={px(a)} cy={py(a)} r="23" />
+              <text className="ht-v" x={px(a)} y={py(a) + 6} textAnchor="middle">{nodes[a].v}</text>
+              {here && (
+                <g>
+                  <rect className="ht-chip" x={px(a) - names[a].join(', ').length * 4.6 - 8} y={py(a) - 54} width={names[a].join(', ').length * 9.2 + 16} height="22" />
+                  <text className="ht-chip-t" x={px(a)} y={py(a) - 38} textAnchor="middle">{names[a].join(', ')}</text>
+                </g>
+              )}
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+// ---------- trie: a tree where every step down is one letter ----------
+function TrieViz({ steps, current, vars }) {
+  const trie = steps[current].trie;
+  const before = current > 0 ? steps[current - 1].trie : null;
+  const nodes = trie.nodes;
+  const bn = before ? before.nodes : null;
+  const pos = {};
+  const letter = {};
+  const seen = new Set();
+  let nextX = 0;
+  let maxD = 0;
+  const place = (a, d) => {
+    const n = nodes[a];
+    if (!n || seen.has(a) || d > 14) return;
+    seen.add(a);
+    const kids = n.k.filter((kv) => nodes[kv[1]] && !seen.has(kv[1]));
+    kids.forEach((kv) => { letter[kv[1]] = kv[0]; place(kv[1], d + 1); });
+    const xs = kids.map((kv) => pos[kv[1]]).filter(Boolean).map((p) => p.x);
+    pos[a] = { x: xs.length ? (Math.min(...xs) + Math.max(...xs)) / 2 : nextX++, d };
+    if (d > maxD) maxD = d;
+  };
+  trie.roots.forEach((r) => place(r, 0));
+  const UX = 62;
+  const UY = 84;
+  const W = Math.max(nextX, 2) * UX + 40;
+  const H = (maxD + 1) * UY + 70;
+  const px = (a) => 38 + pos[a].x * UX;
+  const py = (a) => 62 + pos[a].d * UY;
+  const names = {};
+  const addName = (addr, n) => { names[addr] = [...new Set((names[addr] || []).concat(n))]; };
+  Object.entries(vars).forEach(([n, v]) => { if (nodes[v]) addName(v, n); });
+  Object.entries(trie.members || {}).forEach(([n, v]) => { if (nodes[v]) addName(v, n); });
+  const words = [];
+  const walk = (a, pre, d) => {
+    const n = nodes[a];
+    if (!n || d > 14 || words.length >= 24) return;
+    if (n.e && pre) words.push(pre);
+    n.k.forEach((kv) => walk(kv[1], pre + kv[0], d + 1));
+  };
+  trie.roots.forEach((r) => walk(r, '', 0));
+  const ids = Object.keys(pos);
+  const isNew = (a) => !!bn && !bn[a];
+  const flip = (a) => !!bn && !!bn[a] && bn[a].e !== nodes[a].e;
+  return (
+    <div className="viz">
+      <div className="h-cap">
+        {'trie · ' + ids.length + (ids.length === 1 ? ' node' : ' nodes') + ' · double ring = a word ends here' + (words.length ? ' · words: ' + words.join(', ') : '')}
+      </div>
+      <svg className="htree" width={W} height={H} viewBox={'0 0 ' + W + ' ' + H}>
+        {ids.map((a) => nodes[a].k.map((kv) => {
+          const c = kv[1];
+          if (!pos[c]) return null;
+          return <line key={'e' + a + c + (isNew(c) ? '-' + current : '')} x1={px(a)} y1={py(a)} x2={px(c)} y2={py(c)}
+            className={'ht-edge' + (isNew(c) ? ' fresh' : '')} />;
+        }))}
+        {ids.map((a) => {
+          const here = !!names[a];
+          const hot = isNew(a) || flip(a);
+          return (
+            <g key={a + (hot ? '-' + current : '')} className={'ht-node' + (hot ? ' changed' : here ? ' root' : '')}>
+              {nodes[a].e && <circle className="tr-ring" cx={px(a)} cy={py(a)} r="28" />}
+              <circle cx={px(a)} cy={py(a)} r="21" />
+              <text className="ht-v" x={px(a)} y={py(a) + 6} textAnchor="middle">{letter[a] || '·'}</text>
+              {here && (
+                <g>
+                  <rect className="ht-chip" x={px(a) - names[a].join(', ').length * 4.6 - 8} y={py(a) - 56} width={names[a].join(', ').length * 9.2 + 16} height="22" />
+                  <text className="ht-chip-t" x={px(a)} y={py(a) - 40} textAnchor="middle">{names[a].join(', ')}</text>
+                </g>
+              )}
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+// ---------- a heap drawn as a tree ----------
+const isHeapCode = (code) => /2\s*\*\s*\w+\s*\+\s*[12]|\(\s*\w+\s*-\s*1\s*\)\s*\/\s*2|\bheapify\b|make_heap|push_heap|\b(?:sift|bubble)(?:Up|Down)\b/i.test(code);
+function HeapTree({ items, before, name, current }) {
+  const n = items.length;
+  if (n === 0 || n > 31) return null;
+  const levels = Math.floor(Math.log2(n)) + 1;
+  const W = Math.max(360, Math.min(780, Math.pow(2, levels - 1) * 64));
+  const H = levels * 76 + 24;
+  const pos = (i) => {
+    const L = Math.floor(Math.log2(i + 1));
+    const k = i + 1 - Math.pow(2, L);
+    return { x: ((k + 0.5) / Math.pow(2, L)) * W, y: 32 + L * 76 };
+  };
+  const changed = (i) => !!before && before[i] !== items[i];
+  return (
+    <div className="viz">
+      <div className="h-cap">{name + ' as a tree · index i has children 2i+1 and 2i+2'}</div>
+      <svg className="htree" width={W} height={H} viewBox={'0 0 ' + W + ' ' + H}>
+        {items.map((_, i) => {
+          if (i === 0) return null;
+          const p = pos(i);
+          const q = pos((i - 1) >> 1);
+          return <line key={'e' + i} x1={q.x} y1={q.y} x2={p.x} y2={p.y} className="ht-edge" />;
+        })}
+        {items.map((x, i) => {
+          const p = pos(i);
+          return (
+            <g key={i + '-' + x + (changed(i) ? '-' + current : '')}
+              className={'ht-node' + (i === 0 ? ' root' : '') + (changed(i) ? ' changed' : '')}>
+              <circle cx={p.x} cy={p.y} r="23" />
+              <text className="ht-v" x={p.x} y={p.y + 6} textAnchor="middle">{x}</text>
+              <text className="ht-i" x={p.x} y={p.y + 40} textAnchor="middle">{i}</text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
 // ---------- queue / priority_queue / deque ----------
 function QueueViz({ name, value, before, line, current }) {
   const kind = value.slice(0, value.indexOf('{'));
@@ -1369,7 +1736,7 @@ function QueueViz({ name, value, before, line, current }) {
     : [i === 0 ? 'front' : '', i === items.length - 1 ? 'back' : ''].filter(Boolean).join(' / '));
   const pk = line.match(new RegExp('\\b' + name + '\\s*\\.\\s*(front|back|top)\\s*\\('));
   const peekVal = pk && items.length ? (pk[1] === 'back' ? items[items.length - 1] : items[0]) : null;
-  const label = { que: 'queue · first in, first out', pq: 'priority_queue · biggest comes out first', dq: 'deque · both ends' }[kind];
+  const label = { que: 'queue · first in, first out',pq: 'priority_queue · the top comes out first' , dq: 'deque · both ends' }[kind];
   const ghost = gone !== null && (
     <div key={'pop-' + current} className="que-cell popped">{gone}<span className="que-tag">popped</span></div>
   );
@@ -1390,6 +1757,7 @@ function QueueViz({ name, value, before, line, current }) {
         ))}
         {!goneFront && ghost}
       </div>
+     {isPq && <HeapTree items={items} before={old} name={name} current={current} />}
       {peekVal !== null && <div className="reads">next line reads: <b>{name + '.' + pk[1] + '()'}</b>{' → ' + peekVal}</div>}
     </div>
   );
@@ -1413,7 +1781,9 @@ function HeapView({ steps, current, model, code }) {
     const line = (code.split('\n')[steps[current].line - 1] || '');
     const showBits = usesBits(code) && Object.values(vars).some((v) => /^-?\d+$/.test(String(v).trim()));
     const mathNow = usesMath(code) ? lastMathOps(steps, current, code) : { ops: [], stale: false };
-    if (shapes.length || showBits || mathNow.ops.length) {
+const treeNow = steps[current].tree && Object.keys(steps[current].tree.nodes || {}).length > 0;
+    const trieNow = steps[current].trie && Object.keys(steps[current].trie.nodes || {}).length > 0;
+    if (shapes.length || showBits || mathNow.ops.length || treeNow || trieNow) {
       return (
         <div className="big-arrays">
           {shapes.map(([name, value]) => {
@@ -1422,8 +1792,15 @@ if (isStk(value)) return <StackViz {...props} />;
             if (isLin(value)) return <QueueViz {...props} />;
             if (isHash(value)) return <HashViz {...props} />;
             if (isGrid(value)) return <GridViz {...props} />;
-            return isFlags(value, code) ? <SieveViz {...props} /> : <ArrayViz {...props} />;
+           const arr = isFlags(value, code) ? <SieveViz {...props} /> : <ArrayViz {...props} />;
+           if (!isHeapCode(code) || !value.startsWith('[')) return arr;
+            const szv = ['size', 'heapSize', 'sz', 'cnt', 'count', 'n'].map((k) => vars[k]).find((x) => /^\d+$/.test(String(x)));
+            const lim = szv === undefined ? 99 : Number(szv);
+            const toArr = (s) => (s && s.startsWith('[') ? s.slice(1, -1).trim().split(/\s+/).filter(Boolean) : null);
+            return <div key={name} className="viz">{arr}<HeapTree items={(toArr(value) || []).slice(0, lim)} before={toArr(before[name])} name={name} current={current} /></div>;
           })}
+{treeNow && <TreeViz steps={steps} current={current} code={code} vars={vars} />}
+                   {trieNow && <TrieViz steps={steps} current={current} vars={vars} />}
           {mathNow.ops.length > 0 && <MathViz ops={mathNow.ops} stale={mathNow.stale} />}
           {showBits && <BitsViz vars={vars} before={before} line={line} current={current} />}
         </div>
@@ -1818,7 +2195,7 @@ function App() {
               {!hasSteps && <p className="hint-text">Run the code and your variables show up here.</p>}
               {hasSteps && Object.entries(step.variables).map(([name, value]) => {
                 const old = prevVars[name];
-                const changed = current > 0 && old !== undefined && old !== value;
+                const changed = current > 0 && old !== undefined && old !== value && steps[current - 1].stack.length === step.stack.length;
                 if (isGrid(value)) {
                   const rows = parse2D(value);
                   const was = old && isGrid(old) ? parse2D(old) : null;

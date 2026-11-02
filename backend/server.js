@@ -114,6 +114,7 @@ app.post('/compile', (req, res) => {
 });
 // ---------- LeetCode mode: find the method to call and build main() for it ----------
 const INCLUDES = '#include <iostream>\n#include <vector>\n#include <string>\n#include <sstream>\n#include <algorithm>\n#include <climits>\n#include <cmath>\n#include <map>\n#include <set>\n#include <unordered_map>\n#include <unordered_set>\n#include <queue>\n#include <stack>\n#include <numeric>\n#include <bitset>\n#include <cstring>\n#include <cstdlib>\n#include <cstdint>\n#include <deque>\n#include <list>\n#include <functional>\nusing namespace std;\n';
+const TREE_STRUCT = 'struct TreeNode { int val; TreeNode *left; TreeNode *right; TreeNode() : val(0), left(nullptr), right(nullptr) {} TreeNode(int x) : val(x), left(nullptr), right(nullptr) {} TreeNode(int x, TreeNode *l, TreeNode *r) : val(x), left(l), right(r) {} };\n';
 function splitParams(s) {
   const out = [];
   let depth = 0;
@@ -129,7 +130,7 @@ function splitParams(s) {
 
 function supportedType(t) {
   const k = t.replace(/\s+/g, '');
-  return /^(int|long|longlong|unsigned|unsignedint|short|bool|char|double|float|string|ListNode\*)$/.test(k) ||
+  return /^(int|long|longlong|unsigned|unsignedint|short|bool|char|double|float|string|ListNode\*|TreeNode\*)$/.test(k) ||
     /^vector<(int|long|longlong|double|string)>$/.test(k);
 }
 
@@ -193,7 +194,11 @@ function buildWrapper(method) {
     const key = p.type.replace(/\s+/g, '');
     const src = 'part_(parts_, ' + k + ')';
     args.push(a);
-    if (key === 'ListNode*') {
+    if (key === 'TreeNode*') {
+      w += 'TreeNode* ' + a + ' = NULL;\n' +
+        '{ istringstream is_(' + src + '); string t_; vector<TreeNode*> nd_; while (is_ >> t_) { if (t_ == "null" || t_ == "N") nd_.push_back(NULL); else nd_.push_back(new TreeNode(atoi(t_.c_str()))); }\n' +
+        'if (!nd_.empty()) { ' + a + ' = nd_[0]; size_t c_ = 1; for (size_t p_ = 0; p_ < nd_.size() && c_ < nd_.size(); p_++) { if (!nd_[p_]) continue; nd_[p_]->left = nd_[c_++]; if (c_ < nd_.size()) nd_[p_]->right = nd_[c_++]; } } }\n';
+    } else if (key === 'ListNode*') {
       w += 'ListNode* ' + a + ' = NULL; ListNode* tail' + k + '_ = NULL;\n' +
         '{ istringstream is_(' + src + '); int x_; while (is_ >> x_) { ListNode* n_ = new ListNode(x_); if (' + a + ' == NULL) ' + a + ' = n_; else tail' + k + '_->next = n_; tail' + k + '_ = n_; } }\n';
     } else if (key === 'string') {
@@ -224,6 +229,14 @@ function parseGdb(stdout, source) {
   for (const raw of stdout.split('\n')) {
         if (raw.startsWith('@@VECS@@')) {
       if (cur) Object.assign(cur.variables, JSON.parse(raw.slice(8)));
+      continue;
+    }
+if (raw.startsWith('@@TRIE@@')) {
+      if (cur) cur.trie = JSON.parse(raw.slice(8));
+      continue;
+    }
+    if (raw.startsWith('@@TREES@@')) {
+      if (cur) cur.tree = JSON.parse(raw.slice(9));
       continue;
     }
     if (raw.startsWith('@@CHAINS@@')) {
@@ -299,7 +312,7 @@ function parseGdb(stdout, source) {
   const shown = steps.filter(s =>
     s.line <= source.length && !(s.stack.length > 0 && /^(\w+)::~?\1\(/.test(s.stack[0]))
   );
-  return shown.map((s, i) => ({ step: i + 1, line: s.line, variables: s.variables, stack: s.stack, chains: s.chains }));
+  return shown.map((s, i) => ({ step: i + 1, line: s.line, variables: s.variables, stack: s.stack,chains: s.chains, tree: s.tree, trie: s.trie }));
 }
 
 function startGdb(exe) {
@@ -511,6 +524,98 @@ function prettyItems(body, isMap) {
   }
   return out;
 }
+// ---------- binary trees: read every node reachable from the pointers ----------
+async function readTree(ask, type, roots) {
+  const nodes = {};
+  let level = [...new Set(roots)];
+  for (let depth = 0; depth < 7 && level.length; depth++) {
+    const todo = level.filter((a) => a && a !== '0x0' && !nodes[a]).slice(0, 40);
+    if (!todo.length) break;
+    const cmds = [];
+    for (const a of todo) cmds.push('echo @@A:' + a + '\\n', 'print *(' + type + '*)' + a);
+    const out = await ask(cmds.join('\n'));
+    const next = [];
+    for (const chunk of out.split('@@A:').slice(1)) {
+      const addr = chunk.slice(0, chunk.indexOf('\n')).trim();
+      const m = chunk.match(/= \{([^\n]*)\}/);
+      if (!m) continue;
+      const l = (m[1].match(/\bleft = (0x[0-9a-f]+)/) || [])[1];
+      const r = (m[1].match(/\bright = (0x[0-9a-f]+)/) || [])[1];
+      const v = (m[1].match(/(?:^|, )(?!left\b|right\b)\w+ = (-?\d+)/) || [])[1];
+      if (l === undefined || r === undefined) continue;
+      nodes[addr] = { v: v === undefined ? '?' : v, l, r };
+      if (l !== '0x0') next.push(l);
+      if (r !== '0x0') next.push(r);
+    }
+    level = next;
+    if (Object.keys(nodes).length > 40) break;
+  }
+  return nodes;
+}
+// ---------- tries: a node with an array of child pointers ----------
+function findTrieType(src) {
+  const re = /(?:struct|class)\s+(\w+)\s*\{/g;
+  let m;
+  while ((m = re.exec(src))) {
+    const open = m.index + m[0].length - 1;
+    const body = src.slice(open + 1, bodyEnd(src, open));
+    const f = body.match(new RegExp('\\b' + m[1] + '\\s*\\*\\s*(\\w+)\\s*\\[\\s*\\w+\\s*\\]'));
+    if (f) return { type: m[1], field: f[1] };
+  }
+  return null;
+}
+
+// global pointers of the node type, e.g.  TrieNode* root = new TrieNode();
+function globalPtrNames(bare, type) {
+  const out = [];
+  let depth = 0;
+  for (const line of bare.split('\n')) {
+    if (depth === 0) {
+      const m = line.match(new RegExp('^\\s*(?:static\\s+)?' + type + '\\s*\\*\\s*(\\w+)\\s*(?:=|;)'));
+      if (m) out.push(m[1]);
+    }
+    depth += (line.match(/\{/g) || []).length - (line.match(/\}/g) || []).length;
+  }
+  return out;
+}
+
+function trieLabel(i, n) {
+  if (n === 26) return String.fromCharCode(97 + i);
+  if (n >= 128) return String.fromCharCode(i);
+  return String(i);
+}
+
+async function readTrie(ask, trie, roots) {
+  const nodes = {};
+  let level = [...new Set(roots)];
+  for (let depth = 0; depth < 14 && level.length; depth++) {
+    const todo = level.filter((a) => a && a !== '0x0' && !nodes[a]).slice(0, 30);
+    if (!todo.length) break;
+    const cmds = [];
+    for (const a of todo) cmds.push('echo @@A:' + a + '\\n', 'print *(' + trie.type + '*)' + a);
+    const out = await ask(cmds.join('\n'));
+    const next = [];
+    for (const chunk of out.split('@@A:').slice(1)) {
+      const addr = chunk.slice(0, chunk.indexOf('\n')).trim();
+      const am = chunk.match(new RegExp('\\b' + trie.field + ' = \\{([^}]*)\\}'));
+      if (!am) continue;
+      const raw = am[1].replace(/(0x[0-9a-f]+) <repeats (\d+) times>/g, (mm, v, c) => Array(Number(c)).fill(v).join(', '));
+      const slots = raw.split(',').map((s) => s.trim());
+      const kids = [];
+      slots.forEach((s, i) => {
+        if (/^0x[0-9a-f]+$/.test(s) && s !== '0x0') {
+          kids.push([trieLabel(i, slots.length), s]);
+          next.push(s);
+        }
+      });
+      const em = chunk.match(/\b(\w+) = (true|false)\b/);
+      nodes[addr] = { k: kids, e: em ? em[2] === 'true' : null };
+    }
+    level = next;
+    if (Object.keys(nodes).length > 60) break;
+  }
+  return nodes;
+}
 function prettyList(body) {
   const inner = body.slice(1, -1).trim();
   if (!inner) return [];
@@ -558,6 +663,9 @@ app.post('/tracelist', (req, res) => {
   let src = userCode;
   let startAt = 'main';
   let typeName = null;
+  let treeType = null;
+    let trie = null;
+  let trieGlobals = [];
   const isLeet = /class\s+Solution/.test(bare) && !/\bmain\s*\(/.test(bare);
 
   if (isLeet) {
@@ -569,13 +677,21 @@ app.post('/tracelist', (req, res) => {
     const hasNode = /struct\s+ListNode/.test(bare);
     const header = INCLUDES +
       (hasNode ? '' : 'struct ListNode { int val; ListNode* next; ListNode(int x) : val(x), next(NULL) {} };\n') +
+(/struct\s+TreeNode/.test(bare) || !/TreeNode/.test(bare) ? '' : TREE_STRUCT) +
       '#line 1\n';
-    src = header + userCode + buildWrapper(method);
+      src = header + userCode + buildWrapper(method);
     startAt = 'Solution::' + method.name;
-    if (/ListNode/.test(bare)) typeName = 'ListNode';
+if (/ListNode/.test(bare)) typeName = 'ListNode';
+    if (/TreeNode/.test(bare)) { typeName = 'TreeNode'; treeType = 'TreeNode'; }
   } else {
     const typeMatch = userCode.match(/struct\s+(\w+)\s*\{/);
-    typeName = typeMatch ? typeMatch[1] : null;
+typeName = typeMatch ? typeMatch[1] : null;
+    const sBody = userCode.match(/struct\s+\w+\s*\{([\s\S]*?)\n?\};/);
+    if (typeName && sBody && /\bleft\b/.test(sBody[1]) && /\bright\b/.test(sBody[1])) treeType = typeName;
+         if (!treeType) {
+      trie = findTrieType(bare);
+      if (trie) trieGlobals = globalPtrNames(bare, trie.type);
+    }  
   }
 
   fs.writeFileSync('temp.cpp', src);
@@ -758,9 +874,102 @@ app.post('/tracelist', (req, res) => {
         vecs[m[1]] = items ? tag + '{' + items.join(', ') + '}' : tag + ' (' + n + ' items)';
       }
       all += '\n@@VECS@@' + JSON.stringify(vecs) + '\n';
-      if (typeName) {
+      if (treeType) {
+        const lineNow = Number((bt.match(/^#0\s.*? at [^\n]*?:(\d+)/m) || [])[1]);
+        const srcLines = userCode.split('\n');
+             const tp = [];
+        const here = {}; // pointer variable -> address (or null) in this frame
+        for (const part of [[args, true], [locals, false]]) {
+          for (const m of part[0].matchAll(/^(\w+) = (?:@0x[0-9a-f]+: )?(0x[0-9a-f]+)\s*$/gm)) {
+            if (m[1] === 'this') continue;
+            if (!part[1]) {
+              // a local: only trust it after the line that declares it has run
+              const re = new RegExp('\\w+\\s*\\*+\\s*' + m[1] + '\\s*(?:=|;)');
+              let d = 0;
+              srcLines.forEach((l, i) => { if (i + 1 <= lineNow && re.test(l)) d = i + 1; });
+              if (!d || !(lineNow > d)) continue;
+            }
+            if (typeCache['t:' + m[1]] === undefined) {
+              const wt = await g.ask('whatis ' + m[1]);
+              typeCache['t:' + m[1]] = new RegExp('type = (?:const )?' + treeType + ' \\*').test(wt);
+            }
+            if (!typeCache['t:' + m[1]]) continue;
+            here[m[1]] = m[2] === '0x0' ? null : m[2];
+            if (m[2] !== '0x0') tp.push(m[2]);
+          }
+        }
+        const depthNow = (bt.match(/^#\d+/gm) || []).length;
+        if (g.minDepth === undefined || depthNow < g.minDepth) { g.minDepth = depthNow; g.rootVars = {}; }
+        if (depthNow === g.minDepth) Object.assign(g.rootVars, here);
+        const rootsNow = Object.values(g.rootVars).filter(Boolean);
+        const nodes = await readTree(g.ask, treeType, [...rootsNow, ...tp]);
+        const isChild = new Set();
+        Object.values(nodes).forEach((n) => { isChild.add(n.l); isChild.add(n.r); });
+        const roots = Object.keys(nodes).filter((a) => !isChild.has(a));
+        all += '\n@@TREES@@' + JSON.stringify({ nodes, roots }) + '\n';
+              console.log('tree nodes:', Object.keys(nodes).length, 'line', lineNow);
+      }
+            if (trie) {
+        const lineNow = Number((bt.match(/^#0\s.*? at [^\n]*?:(\d+)/m) || [])[1]);
+        const srcLines = userCode.split('\n');
+        const tp = [];
+        const here = {};
+        const members = {};
+        const isNodePtr = async (expr, key) => {
+          if (key && typeCache[key] !== undefined) return typeCache[key];
+          const wt = await g.ask('whatis ' + expr);
+          const ok = new RegExp('type = (?:const )?' + trie.type + ' \\*').test(wt);
+          if (key) typeCache[key] = ok;
+          return ok;
+        };
+        // pointer variables of this frame (a local only counts after its declaration has run)
+        for (const part of [[args, true], [locals, false]]) {
+          for (const m of part[0].matchAll(/^(\w+) = (?:@0x[0-9a-f]+: )?(0x[0-9a-f]+)\s*$/gm)) {
+            if (m[1] === 'this' || m[2] === '0x0') continue;
+            if (!part[1]) {
+              const re = new RegExp('\\w+\\s*\\*+\\s*' + m[1] + '\\s*(?:=|;)');
+              let d = 0;
+              srcLines.forEach((l, i) => { if (i + 1 <= lineNow && re.test(l)) d = i + 1; });
+              if (!d || !(lineNow > d)) continue;
+            }
+            if (await isNodePtr(m[1], 'tt:' + m[1])) { here[m[1]] = m[2]; tp.push(m[2]); }
+          }
+        }
+        // inside a method: this is a node, or an object that holds the root (class Trie { Node* root; })
+        const tm = args.match(/^this = (0x[0-9a-f]+)/m);
+        if (tm) {
+          if (await isNodePtr('this', null)) { members.this = tm[1]; tp.push(tm[1]); }
+          else {
+            const so = await g.ask('print *this');
+            for (const mm of so.matchAll(/\b(\w+) = (0x[0-9a-f]+)\b/g)) {
+              if (mm[2] === '0x0') continue;
+              if (await isNodePtr('this->' + mm[1], 'tm:' + mm[1])) { members[mm[1]] = mm[2]; tp.push(mm[2]); }
+            }
+          }
+        }
+        // global root pointers
+        for (const gname of trieGlobals) {
+          const go = await g.ask('print ' + gname);
+          const gm = go.match(/=\s*(?:\([^)]*\)\s*)?(0x[0-9a-f]+)/);
+          if (gm && gm[1] !== '0x0') { members[gname] = gm[1]; tp.push(gm[1]); }
+        }
+        const keep = Object.assign({}, members);
+        delete keep.this;
+        if (Object.keys(keep).length) g.trieMembers = keep;
+        const memNow = Object.assign({}, g.trieMembers || {}, members);
+        const depthNow = (bt.match(/^#\d+/gm) || []).length;
+        if (g.minDepth === undefined || depthNow < g.minDepth) { g.minDepth = depthNow; g.rootVars = {}; }
+        if (depthNow === g.minDepth) Object.assign(g.rootVars, here);
+        const rootsNow = Object.values(g.rootVars).concat(Object.values(memNow));
+        const nodes = await readTrie(g.ask, trie, [...rootsNow, ...tp]);
+        const isChild = new Set();
+        Object.values(nodes).forEach((n) => n.k.forEach((kv) => isChild.add(kv[1])));
+        const roots = Object.keys(nodes).filter((a) => !isChild.has(a));
+        all += '\n@@TRIE@@' + JSON.stringify({ nodes, roots, members: memNow }) + '\n';
+      }
+      if (typeName && !treeType && !trie) {
         const chains = {};
-        for (const m of (args + locals).matchAll(/^(\w+) = (0x[0-9a-f]+)\s*$/gm)) {
+      for (const m of (args + locals).matchAll(/^(\w+) = (0x[0-9a-f]+)\s*$/gm)) {
           if (m[1] === 'this' || m[2] === '0x0') continue;
           const nodes = await followChain(g.ask, m[1], typeName, m[2]);
           if (nodes.length) chains[m[1]] = nodes;

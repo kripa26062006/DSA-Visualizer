@@ -1,22 +1,23 @@
 #include <iostream>
-#include <queue>
-#include <deque>
+#include <string>
 using namespace std;
+struct TrieNode {
+    TrieNode* next[26];
+    bool end;
+};
+void insert(TrieNode* root, string word) {
+    TrieNode* cur = root;
+    for (char c : word) {
+        int i = c - 'a';
+        if (cur->next[i] == NULL) cur->next[i] = new TrieNode();
+        cur = cur->next[i];
+    }
+    cur->end = true;
+}
 int main() {
-    queue<int> q;
-    q.push(2);
-    q.push(3);
-    q.push(4);
-    int f = q.front();
-    q.pop();
-    priority_queue<int> pq;
-    pq.push(5);
-    pq.push(9);
-    pq.push(2);
-    pq.pop();
-    deque<int> d;
-    d.push_back(1);
-    d.push_front(7);
-    d.pop_back();
+    TrieNode* root = new TrieNode();
+    insert(root, "cat");
+    insert(root, "car");
+    insert(root, "dog");
     return 0;
 }
