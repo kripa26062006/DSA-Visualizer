@@ -1833,6 +1833,25 @@ function QueueViz({ name, value, before, line, current }) {
   );
 }
 
+function ScalarViz({ items, before, current }) {
+  return (
+    <div className="viz">
+      <div className="h-cap">variables right now</div>
+      <div className="sc-row">
+        {items.map(([n, v]) => {
+          const changed = current > 0 && before[n] !== v;
+          return (
+            <div key={n + (changed ? '-' + current : '')} className={'sc-card' + (changed ? ' changed' : '')}>
+              <div className="sc-n">{n}</div>
+              <div className="sc-v">{v}</div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ---------- the heap drawing (SVG) ----------
 
 function HeapView({ steps, current, model, code }) {
@@ -1893,8 +1912,10 @@ if (isStk(value)) return <StackViz {...props} />;
         </div>
       );
     }
-    return <div className="heap-empty">Nothing in the pond yet. Linked-list nodes, arrays and recursive calls show up here.</div>;
   }
+  const sc = Object.entries(vars).filter(([n, v]) => !n.startsWith('__') && !/^(0x|res\{|que\{|stk\{|pq\{|dq\{|\{|\[)/.test(String(v)));
+    if (sc.length) return <ScalarViz items={sc} before={before} current={current} />;
+    return <div className="heap-empty">Nothing in the pond yet. Linked-list nodes, arrays and recursive calls show up here.</div>;
   const pos = {};
   visible.forEach((a, i) => { pos[a] = i; });
 

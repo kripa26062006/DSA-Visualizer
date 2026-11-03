@@ -377,3 +377,10 @@ kbd { font: 11px var(--mono); }
 .gv-node.cur .gv-t { fill: #fff; }
 .gv-t { font: 600 17px var(--mono); fill: var(--ink); }
 .gv-d { font: 600 13px var(--mono); fill: var(--ink); }
+/* ---- plain variables in the pond ---- */
+.sc-row { display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; padding: 20px; }
+.sc-card { min-width: 110px; border: 3px solid var(--ink); background: var(--cream); box-shadow: 4px 4px 0 var(--ink); text-align: center; padding: 10px 14px; }
+.sc-n { font: 600 14px var(--mono); border-bottom: 2px solid var(--ink); padding-bottom: 4px; margin-bottom: 6px; }
+.sc-v { font: 600 26px var(--mono); overflow-wrap: anywhere; }
+.sc-card.changed { background: var(--red); color: #fff; animation: pop 0.5s ease-out; }
+.sc-card.changed .sc-n { border-color: #fff; }
